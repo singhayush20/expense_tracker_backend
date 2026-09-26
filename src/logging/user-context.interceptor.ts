@@ -7,13 +7,20 @@ import {
 import { Observable } from 'rxjs';
 import { PinoLogger } from 'nestjs-pino';
 
+interface AuthenticatedRequest {
+  user?: {
+    id?: string;
+  };
+  id?: string;
+}
+
 @Injectable()
 export class UserContextInterceptor implements NestInterceptor {
   constructor(private readonly logger: PinoLogger) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const httpContext = context.switchToHttp();
-    const request = httpContext.getRequest();
+    const request = httpContext.getRequest<AuthenticatedRequest>();
 
     /**
      * Authentication guards execute before interceptors.

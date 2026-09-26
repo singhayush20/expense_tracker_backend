@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { Params } from 'nestjs-pino';
+import type { IncomingMessage, ServerResponse } from 'http';
+
+type RequestWithId = IncomingMessage & {
+  id?: string | number;
+  headers: Record<string, string | string[] | undefined>;
+};
 
 export function createLoggerConfig(): Params {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -14,8 +20,8 @@ export function createLoggerConfig(): Params {
        * If the client/load balancer already provides an
        * X-Request-ID, preserve it. Otherwise generate one.
        */
-      genReqId: (req) => {
-        const requestId = req.headers['x-request-id'];
+      genReqId: (req: IncomingMessage) => {
+        const requestId = (req as RequestWithId).headers['x-request-id'];
 
         if (typeof requestId === 'string' && requestId.length > 0) {
           return requestId;
@@ -27,12 +33,15 @@ export function createLoggerConfig(): Params {
       /**
        * Fields automatically added to every HTTP log.
        */
-      customProps: (req) => ({
-        service: process.env.SERVICE_NAME ?? 'expense-tracker-api',
-        environment: process.env.NODE_ENV ?? 'development',
-        version: process.env.APP_VERSION ?? 'unknown',
-        requestId: req.id,
-      }),
+      customProps: (req: IncomingMessage) => {
+        const typedReq = req as RequestWithId;
+        return {
+          service: process.env.SERVICE_NAME ?? 'expense-tracker-api',
+          environment: process.env.NODE_ENV ?? 'development',
+          version: process.env.APP_VERSION ?? 'unknown',
+          requestId: typedReq.id,
+        };
+      },
 
       /**
        * Never allow secrets to appear in logs.
@@ -59,14 +68,21 @@ export function createLoggerConfig(): Params {
        * request/response objects.
        */
       serializers: {
-        req: (req) => ({
-          method: req.method,
-          url: req.url,
-          userAgent: req.headers['user-agent'],
-          remoteAddress: req.remoteAddress,
-        }),
+        req: (req: IncomingMessage) => {
+          const typedReq = req as RequestWithId & {
+            method?: string;
+            url?: string;
+            remoteAddress?: string;
+          };
+          return {
+            method: typedReq.method,
+            url: typedReq.url,
+            userAgent: typedReq.headers['user-agent'],
+            remoteAddress: typedReq.remoteAddress,
+          };
+        },
 
-        res: (res) => ({
+        res: (res: ServerResponse) => ({
           statusCode: res.statusCode,
         }),
       },
@@ -77,7 +93,7 @@ export function createLoggerConfig(): Params {
        * every few seconds.
        */
       autoLogging: {
-        ignore: (req) => {
+        ignore: (req: IncomingMessage) => {
           return (
             req.url === '/health' ||
             req.url === '/health/live' ||

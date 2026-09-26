@@ -1,16 +1,13 @@
 import { Controller, Get, Inject } from '@nestjs/common';
 import { AppService } from './app.service';
-import { LoggerServiceImpl } from './logger/logger.service';
+import { Logger } from 'nestjs-pino';
 
 @Controller()
 export class AppController {
-  private readonly logger = LoggerServiceImpl.createControllerLogger(
-    AppController.name,
-  );
-
   constructor(
     private readonly appService: AppService,
-    @Inject('LOGGER') private readonly injectedLogger: LoggerServiceImpl,
+    @Inject(Logger) private readonly logger: Logger,
+    @Inject(Logger) private readonly injectedLogger: Logger,
   ) {}
 
   @Get()

@@ -1,15 +1,13 @@
-import { Injectable } from '@nestjs/common';
-import { LoggerServiceImpl } from './logger/logger.service';
+import { Injectable, Inject } from '@nestjs/common';
+import { Logger } from 'nestjs-pino';
 
 @Injectable()
 export class AppService {
-  private readonly logger = LoggerServiceImpl.createServiceLogger(
-    AppService.name,
-  );
+  constructor(@Inject(Logger) private readonly logger: Logger) {}
 
   getHello(): string {
     this.logger.log('getHello called', { action: 'getHello' });
-    this.logger.logBusinessEvent('hello_requested', { endpoint: '/' });
+    this.logger.log({ event: 'hello_requested', endpoint: '/' });
     return 'Hello World!';
   }
 }

@@ -6,11 +6,11 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { PinoLogger } from 'nestjs-pino';
+import { Logger } from 'nestjs-pino';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
-  constructor(private readonly logger: PinoLogger) {}
+  constructor(private readonly logger: Logger) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const context = host.switchToHttp();
@@ -58,7 +58,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const message =
       statusCode >= 500
         ? 'Internal server error'
-        : this.getClientMessage(exception);
+        : this.getClientMessage(exception as HttpException);
 
     response.status(statusCode).json({
       statusCode,
@@ -81,10 +81,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       response !== null &&
       'message' in response
     ) {
-      const message = (response as { message: unknown }).message;
+      const message = (response as Record<string, unknown>).message;
 
       if (typeof message === 'string' || Array.isArray(message)) {
-        return message as string | string[];
+        return message;
       }
     }
 
