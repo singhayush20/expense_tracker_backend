@@ -1,0 +1,26 @@
+#!/bin/bash
+
+echo "🔍 Checking staged TypeScript files for lint errors..."
+
+# Get staged TypeScript files
+staged_files=$(git diff --cached --name-only -- '*.ts')
+
+if [ -z "$staged_files" ]; then
+  echo "ℹ️  No TypeScript files staged. Skipping lint check."
+  exit 0
+fi
+
+echo "   Files: $staged_files"
+
+# Run eslint on staged files
+if npx eslint --no-fix $staged_files; then
+  echo "✅ All staged files passed lint checks!"
+  exit 0
+else
+  echo ""
+  echo "❌ Lint errors found in staged files:"
+  echo ""
+  echo "💡 To fix these errors, run: npm run lint"
+  echo "   This will auto-fix what it can. Review remaining errors manually."
+  exit 1
+fi

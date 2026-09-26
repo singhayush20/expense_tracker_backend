@@ -1,0 +1,24 @@
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { Logger } from 'nestjs-pino';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+  });
+
+  /**
+   * Replace Nest's default logger with Pino.
+   */
+  app.useLogger(app.get(Logger));
+
+  /**
+   * Production API prefix.
+   */
+  app.setGlobalPrefix('api/v1');
+
+  const port = Number(process.env.PORT ?? 3000);
+
+  await app.listen(port);
+}
+bootstrap();
