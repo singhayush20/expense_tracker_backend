@@ -37,11 +37,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     const userId = request.user?.id;
 
-    /**
-     * Log the complete exception internally.
-     *
-     * Pino will serialize the Error including its stack.
-     */
     this.logger.error(
       {
         err: exception,
@@ -55,9 +50,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       'Unhandled HTTP exception',
     );
 
-    /**
-     * Never expose internal implementation details.
-     */
     const message =
       statusCode >= 500
         ? 'Internal server error'

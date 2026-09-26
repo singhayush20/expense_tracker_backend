@@ -11,7 +11,7 @@ export class AppController {
 
   @Get('test')
   getHello(): string {
-    this.logger.info('GET / endpoint called');
+    this.logger.info('GET /app/api/v1/test endpoint called');
     return this.appService.test();
   }
 }

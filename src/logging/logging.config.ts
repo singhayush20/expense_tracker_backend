@@ -18,34 +18,35 @@ export function createLoggerConfig(): Params {
        * Correlation ID for every HTTP request.
        *
        * If the client/load balancer already provides an
-       * X-Request-ID, preserve it. Otherwise generate one.
+       * X-Request-ID, preserve it. Otherwise generate one
+       * and set it as a response header.
        */
-      genReqId: (req: IncomingMessage) => {
+      genReqId: (req: IncomingMessage, res: ServerResponse) => {
         const requestId = (req as RequestWithId).headers['x-request-id'];
 
         if (typeof requestId === 'string' && requestId.length > 0) {
           return requestId;
         }
 
-        return randomUUID();
+        const id = randomUUID();
+        res.setHeader('X-Request-Id', id);
+        return id;
       },
-
-      /**
-       * Fields automatically added to every HTTP log.
-       */
-      customProps: (req: IncomingMessage) => {
-        const typedReq = req as RequestWithId;
-        return {
-          service: process.env.SERVICE_NAME ?? 'expense-tracker-api',
-          environment: process.env.NODE_ENV ?? 'development',
-          version: process.env.APP_VERSION ?? 'unknown',
-          requestId: typedReq.id,
-        };
+      customLogLevel: (
+        req: IncomingMessage,
+        res: ServerResponse,
+        err?: Error,
+      ) => {
+        if (res.statusCode >= 500 || err) return 'error';
+        if (res.statusCode >= 400) return 'warn';
+        if (res.statusCode >= 300) return 'silent';
+        return 'info';
       },
-
-      /**
-       * Never allow secrets to appear in logs.
-       */
+      customProps: () => ({
+        service: process.env.SERVICE_NAME ?? 'expense-tracker-api',
+        environment: process.env.NODE_ENV ?? 'development',
+        version: process.env.APP_VERSION ?? 'unknown',
+      }),
       redact: {
         paths: [
           'req.headers.authorization',
@@ -62,11 +63,6 @@ export function createLoggerConfig(): Params {
         ],
         censor: '[REDACTED]',
       },
-
-      /**
-       * Keep HTTP logs useful without dumping complete
-       * request/response objects.
-       */
       serializers: {
         req: (req: IncomingMessage) => {
           const typedReq = req as RequestWithId & {
@@ -111,7 +107,6 @@ export function createLoggerConfig(): Params {
                 colorize: true,
                 singleLine: true,
                 translateTime: 'SYS:standard',
-
                 ignore: 'pid,hostname,req.headers,req.remoteAddress',
               },
             },
