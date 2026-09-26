@@ -44,7 +44,7 @@ export function createLoggerConfig(): Params {
       },
       customProps: () => ({
         service: process.env.SERVICE_NAME ?? 'expense-tracker-api',
-        environment: process.env.NODE_ENV ?? 'development',
+        environment: process.env.ENV ?? 'unknown',
         version: process.env.APP_VERSION ?? 'unknown',
       }),
       redact: {

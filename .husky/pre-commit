@@ -3,7 +3,7 @@
 echo "🔍 Checking staged TypeScript files for lint errors..."
 
 # Get staged TypeScript files
-staged_files=$(git diff --cached --name-only -- '*.ts')
+staged_files=$(git diff --cached --name-only --diff-filter=d -- '*.ts')
 
 if [ -z "$staged_files" ]; then
   echo "ℹ️  No TypeScript files staged. Skipping lint check."

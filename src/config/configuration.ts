@@ -2,7 +2,7 @@ const configuration = () => {
   return {
     app: {
       port: parseInt(process.env.PORT ?? '3000', 10),
-      env: process.env.ENV,
+      env: process.env.ENVIRONMENT,
     },
     database: {
       host: process.env.DB_HOST,
