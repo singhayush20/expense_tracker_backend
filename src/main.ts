@@ -12,11 +12,6 @@ async function bootstrap(): Promise<void> {
    */
   app.useLogger(app.get(Logger));
 
-  /**
-   * Production API prefix.
-   */
-  app.setGlobalPrefix('api/v1');
-
   const port = Number(process.env.PORT ?? 3000);
 
   await app.listen(port);

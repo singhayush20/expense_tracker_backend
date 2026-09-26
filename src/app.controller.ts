@@ -1,19 +1,17 @@
-import { Controller, Get, Inject } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
-import { Logger } from 'nestjs-pino';
+import { PinoLogger, InjectPinoLogger } from 'nestjs-pino';
 
-@Controller()
+@Controller('app/api/v1')
 export class AppController {
   constructor(
     private readonly appService: AppService,
-    @Inject(Logger) private readonly logger: Logger,
-    @Inject(Logger) private readonly injectedLogger: Logger,
+    @InjectPinoLogger(AppController.name) private readonly logger: PinoLogger,
   ) {}
 
-  @Get()
+  @Get('test')
   getHello(): string {
-    this.logger.log('GET / endpoint called');
-    this.injectedLogger.log('Injected logger also works');
-    return this.appService.getHello();
+    this.logger.info('GET / endpoint called');
+    return this.appService.test();
   }
 }
