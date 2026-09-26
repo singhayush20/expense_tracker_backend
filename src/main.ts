@@ -6,7 +6,6 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationError } from 'class-validator';
 import express from 'express';
-import { GlobalExceptionFilter } from './exceptionn-handling/global-exception.filter';
 import { AppException } from './exceptionn-handling/app-exception';
 import { ExceptionCodes } from './exceptionn-handling/exception-codes';
 
@@ -74,8 +73,6 @@ async function bootstrap(): Promise<void> {
     type: VersioningType.URI,
     defaultVersion: '1',
   });
-
-  app.useGlobalFilters(app.get(GlobalExceptionFilter));
 
   const config = new DocumentBuilder()
     .setTitle('CodeSense')
