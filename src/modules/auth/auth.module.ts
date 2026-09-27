@@ -9,13 +9,24 @@ import { UserModule } from '../user/user.module';
 import { Session } from './entity/session.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RefreshTokenGuard } from './guards/refresh-token.guard';
+import { RolesGuard } from './guards/roles.guard';
+import { AuthIdentity } from '../user/entity/auth-identity.entity';
+import { PasswordCredential } from '../user/entity/password-credential.entity';
+import { UserRole } from '../user/entity/user-role.entity';
+import { User } from '../user/entity/user.entity';
 
 @Module({
   imports: [
     UserModule,
-
-    TypeOrmModule.forFeature([Session]),
-
+    TypeOrmModule.forFeature([
+      User,
+      AuthIdentity,
+      PasswordCredential,
+      UserRole,
+      Session,
+    ]),
     JwtModule.register({}),
   ],
   providers: [
@@ -24,7 +35,18 @@ import { JwtModule } from '@nestjs/jwt';
     SessionService,
     GoogleAuthService,
     AuthService,
+    JwtAuthGuard,
+    RefreshTokenGuard,
+    RolesGuard,
   ],
   controllers: [AuthController],
+  exports: [
+    AuthService,
+    AuthTokenService,
+    SessionService,
+    JwtAuthGuard,
+    RefreshTokenGuard,
+    RolesGuard,
+  ],
 })
 export class AuthModule {}

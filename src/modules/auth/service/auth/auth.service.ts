@@ -15,6 +15,9 @@ import { SessionService } from '../session/session.service';
 import { UserStatus } from '../../../user/enum/user-status.enum';
 import { Session } from '../../entity/session.entity';
 import { UserService } from '../../../user/service/user.service';
+import { PasswordCredential } from '../../../user/entity/password-credential.entity';
+import { AuthIdentity } from '../../../user/entity/auth-identity.entity';
+import { User } from '../../../user/entity/user.entity';
 
 interface DeviceContext {
   deviceId?: string;
@@ -51,23 +54,23 @@ export class AuthService {
     const passwordHash = await this.passwordService.hash(password);
 
     const user = await this.dataSource.transaction(async (manager) => {
-      const createdUser = manager.create('User', {
+      const createdUser = manager.create(User, {
         email: normalizedEmail,
         displayName,
         emailVerified: false,
-        status: 'ACTIVE',
+        status: UserStatus.ACTIVE,
       });
 
       const savedUser = await manager.save(createdUser);
 
-      const credential = manager.create('PasswordCredential', {
+      const credential = manager.create(PasswordCredential, {
         userId: savedUser.id,
         passwordHash,
       });
 
       await manager.save(credential);
 
-      const identity = manager.create('AuthIdentity', {
+      const identity = manager.create(AuthIdentity, {
         userId: savedUser.id,
         provider: AuthIdentityProvider.EMAIL,
         providerUserId: null,
@@ -138,17 +141,17 @@ export class AuthService {
       }
 
       user = await this.dataSource.transaction(async (manager) => {
-        const newUser = manager.create('User', {
+        const newUser = manager.create(User, {
           email: googleUser.email,
           emailVerified: googleUser.emailVerified,
           displayName: googleUser.displayName,
           avatarUrl: googleUser.avatarUrl,
-          status: 'ACTIVE',
+          status: UserStatus.ACTIVE,
         });
 
         const savedUser = await manager.save(newUser);
 
-        const identity = manager.create('AuthIdentity', {
+        const identity = manager.create(AuthIdentity, {
           userId: savedUser.id,
           provider: AuthIdentityProvider.GOOGLE,
           providerUserId: googleUser.subject,

@@ -1,4 +1,4 @@
-import { Session } from '../../session/entities/session.entity';
+import { Session } from '../entity/session.entity';
 import { AuthenticatedUser } from '../dto/auth.dto';
 
 declare global {
