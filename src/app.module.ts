@@ -9,6 +9,8 @@ import { GlobalExceptionFilter } from './exceptionn-handling/global-exception.fi
 import { UserContextInterceptor } from './logging/user-context.interceptor';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { configValidationSchema } from './config/config-validation-schema';
+import { AuthModule } from './modules/auth/auth.module';
+import { UserModule } from './modules/user/user.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -36,6 +38,8 @@ import configuration from './config/configuration';
         retryDelay: 0,
       }),
     }),
+    AuthModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [
