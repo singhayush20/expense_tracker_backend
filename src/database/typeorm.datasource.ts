@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv';
 import { DataSource } from 'typeorm';
 
 dotenv.config({
-  path: `.env.${process.env.ENVIRONMENT || 'dev'}`,
+  path: `.env.${process.env.ENV || 'dev'}`,
 });
 
 export const AppDataSource = new DataSource({
@@ -11,7 +11,7 @@ export const AppDataSource = new DataSource({
   host: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT || '5432', 10),
   username: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD, // MUST be string
+  password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
 
   entities: ['src/**/*.entity.ts'],
