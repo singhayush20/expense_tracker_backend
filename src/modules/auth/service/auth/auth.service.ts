@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 
+import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { AuthIdentityProvider } from '../../enums';
 import { UserStatus } from '../../../user/enum';
@@ -18,6 +19,8 @@ import { SessionService } from '../session/session.service';
 
 @Injectable()
 export class AuthService {
+  private readonly accessTokenExpiresInSeconds: number;
+
   constructor(
     private readonly usersService: UserService,
     private readonly passwordService: PasswordService,
@@ -25,7 +28,12 @@ export class AuthService {
     private readonly sessionService: SessionService,
     private readonly authTokenService: AuthTokenService,
     private readonly dataSource: DataSource,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.accessTokenExpiresInSeconds = this.configService.get<number>(
+      'tokens.accessTokenExpiresInSeconds',
+    )!;
+  }
 
   async registerWithEmail(
     email: string,
@@ -129,7 +137,7 @@ export class AuthService {
          * authenticated account-linking flow.
          */
         throw new ConflictException(
-          'An account already exists with this email. Sign in using the existing method and link Google from account settings.',
+          'An account already exists with this email.',
         );
       }
 
@@ -183,7 +191,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      expiresIn: 15 * 60,
+      expiresIn: this.accessTokenExpiresInSeconds,
       user: {
         id: userId,
         roles,
@@ -214,7 +222,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken: newRefreshToken,
-      expiresIn: 900,
+      expiresIn: this.accessTokenExpiresInSeconds,
       user: {
         id: user.id,
         email: user.email ?? null,

@@ -5,6 +5,7 @@ export * from './auth-session.response.dto';
 export * from './email-login-request.dto';
 export * from './email-signup-request.dto';
 export * from './google-signin.dto';
+export * from './google-user.dto';
 export * from './refresh-token.dto';
 export * from './auth.dto';
 export * from './device-context.dto';
