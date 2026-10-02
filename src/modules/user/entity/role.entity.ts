@@ -27,5 +27,5 @@ export class RoleEntity {
     name: 'created_at',
     type: 'timestamptz',
   })
-  createdA!: Date;
+  createdAt!: Date;
 }

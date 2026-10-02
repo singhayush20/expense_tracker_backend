@@ -13,9 +13,9 @@ import { PasswordCredential, AuthIdentity, User } from '../../../user/entity';
 import { DeviceContext, LoginResponseDto, RefreshResponseDto } from '../../dto';
 import { UserService } from '../../../user/service/user.service';
 import { AuthTokenService } from '../auth-token/auth-token.service';
-import { PasswordService } from '../password';
 import { GoogleAuthService } from '../google-auth/google-auth.service';
 import { SessionService } from '../session/session.service';
+import { PasswordService } from '../password/password.service';
 
 @Injectable()
 export class AuthService {
