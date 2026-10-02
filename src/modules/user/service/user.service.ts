@@ -22,13 +22,10 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
-
     @InjectRepository(AuthIdentity)
     private readonly identitiesRepository: Repository<AuthIdentity>,
-
     @InjectRepository(PasswordCredential)
     private readonly passwordCredentialsRepository: Repository<PasswordCredential>,
-
     @InjectRepository(UserRole)
     private readonly userRolesRepository: Repository<UserRole>,
   ) {}
