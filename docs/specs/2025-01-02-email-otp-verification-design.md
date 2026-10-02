@@ -180,15 +180,18 @@ if (!user.emailVerified) {
   // Send new OTP and inform user
   await this.emailVerificationService.sendVerificationEmail(user);
   
-  throw new ForbiddenException(
-    'Please verify your email before signing in. A new verification code has been sent to your email.'
+  throw new AppException(
+    ExceptionCodes.EMAIL_NOT_VERIFIED,
+    'Please verify your email before signing in. A new verification code has been sent to your email.',
+    HttpStatus.FORBIDDEN,
   );
 }
 ```
 
 **Behavior**:
 - If user is unverified, send a fresh OTP
-- Return helpful error message indicating new code sent
+- Throw `AppException` with code `E0004` 
+- Frontend can check `code: 'E0004'` to redirect to verification screen
 - User can then verify with the new OTP
 
 #### Unchanged: POST /api/v1/auth/google
@@ -272,14 +275,58 @@ Create `email_verifications` table with:
 
 ### Error Handling
 
-| Scenario | HTTP Status | Response |
-|----------|-------------|----------|
-| Invalid OTP | 400 | `{ "message": "Invalid verification code." }` |
-| Expired OTP | 400 | `{ "message": "Verification code has expired." }` |
-| Too many attempts | 429 | `{ "message": "Too many invalid attempts. Request a new code." }` |
-| Resend too soon | 429 | `{ "message": "Please wait X seconds before requesting another code." }` |
-| Already verified | 400 | `{ "message": "Email is already verified." }` |
-| No verification found | 400 | `{ "message": "Invalid verification code." }` |
+All errors use the custom `AppException` class with specific exception codes for frontend handling.
+
+#### Add to ExceptionCodes:
+
+```typescript
+export const ExceptionCodes = {
+  ROLES_NOT_FOUND: 'E0001',
+  USER_NOT_FOUND: 'E0002',
+  METHOD_ARGUMENT_NOT_VALID: 'E0003',
+  EMAIL_NOT_VERIFIED: 'E0004',
+  INVALID_VERIFICATION_CODE: 'E0005',
+  VERIFICATION_CODE_EXPIRED: 'E0006',
+  TOO_MANY_VERIFICATION_ATTEMPTS: 'E0007',
+  VERIFICATION_CODE_ALREADY_USED: 'E0008',
+  EMAIL_ALREADY_VERIFIED: 'E0009',
+  RESEND_COOLDOWN_ACTIVE: 'E0010',
+  NO_VERIFICATION_FOUND: 'E0011',
+};
+```
+
+#### Error Responses:
+
+| Scenario | Code | HTTP Status | Response |
+|----------|------|-------------|----------|
+| Invalid OTP | E0005 | 400 | `{ "code": "E0005", "message": "Invalid verification code." }` |
+| Expired OTP | E0006 | 400 | `{ "code": "E0006", "message": "Verification code has expired." }` |
+| Too many attempts | E0007 | 429 | `{ "code": "E0007", "message": "Too many invalid attempts. Request a new code." }` |
+| OTP already used | E0008 | 400 | `{ "code": "E0008", "message": "Verification code has already been used." }` |
+| Already verified | E0009 | 400 | `{ "code": "E0009", "message": "Email is already verified." }` |
+| Resend too soon | E0010 | 429 | `{ "code": "E0010", "message": "Please wait X seconds before requesting another code." }` |
+| No verification found | E0011 | 400 | `{ "code": "E0011", "message": "Invalid verification code." }` |
+| Email not verified (login) | E0004 | 403 | `{ "code": "E0004", "message": "Please verify your email before signing in. A new verification code has been sent to your email." }` |
+
+**Example Response Format**:
+```json
+{
+  "statusCode": 403,
+  "message": "Please verify your email before signing in. A new verification code has been sent to your email.",
+  "requestId": "req-abc123",
+  "timestamp": "2025-01-02T10:30:00.000Z",
+  "path": "/api/v1/auth/email/login"
+}
+```
+
+**Frontend Handling**:
+```typescript
+// Frontend can now handle errors programmatically
+if (error.response.data.code === 'E0004') {
+  // Redirect to verification screen
+  router.push('/verify-email');
+}
+```
 
 ### Cleanup Strategy
 
