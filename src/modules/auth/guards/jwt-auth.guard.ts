@@ -11,7 +11,7 @@ import { UserStatus } from '../../user/enum';
 import { AuthenticatedUser } from '../dto';
 import { AuthenticatedRequest } from '../../../types/authenticated-request.type';
 import { UserService } from '../../user/service/user.service';
-import { IS_PUBLIC_KEY } from '../decorators/publoc.decorator';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { AuthTokenService } from '../service/auth-token/auth-token.service';
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
