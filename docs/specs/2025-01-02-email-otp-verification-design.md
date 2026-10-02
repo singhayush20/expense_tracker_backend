@@ -172,13 +172,24 @@ export class EmailVerification {
 
 **Current**: Authenticates any active user
 
-**New**: Reject unverified users
+**New**: Handle unverified users gracefully
 
 ```typescript
 if (!user.emailVerified) {
-  throw new ForbiddenException('Please verify your email before signing in.');
+  // User registered but hasn't verified email yet
+  // Send new OTP and inform user
+  await this.emailVerificationService.sendVerificationEmail(user);
+  
+  throw new ForbiddenException(
+    'Please verify your email before signing in. A new verification code has been sent to your email.'
+  );
 }
 ```
+
+**Behavior**:
+- If user is unverified, send a fresh OTP
+- Return helpful error message indicating new code sent
+- User can then verify with the new OTP
 
 #### Unchanged: POST /api/v1/auth/google
 
@@ -278,6 +289,63 @@ Expired verification records accumulated in database. Implement scheduled cleanu
 - Delete records where `expires_at < NOW()`
 - Use `@nestjs/schedule` or existing scheduler
 
+### Rate Limiting Implementation
+
+Create `src/modules/auth/guards/rate-limit.guard.ts`:
+
+```typescript
+@Injectable()
+export class RateLimitGuard implements CanActivate {
+  constructor(
+    private readonly redis: Redis,
+    private readonly configService: ConfigService,
+  ) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest();
+    const ip = request.ip;
+    const email = request.body?.email;
+    
+    const endpoint = this.getEndpointType(request);
+    const limits = this.configService.get(`rateLimit.${endpoint}`);
+    
+    // Check IP-based limit
+    if (await this.isRateLimited(`ip:${ip}`, limits.ip)) {
+      throw new TooManyRequestsException('Too many requests. Please try again later.');
+    }
+    
+    // Check email-based limit if email provided
+    if (email && await this.isRateLimited(`email:${email}`, limits.email)) {
+      throw new TooManyRequestsException('Too many requests. Please try again later.');
+    }
+    
+    // Increment counters
+    await this.incrementCounter(`ip:${ip}`, limits.ip.window);
+    if (email) {
+      await this.incrementCounter(`email:${email}`, limits.email.window);
+    }
+    
+    return true;
+  }
+}
+```
+
+Configure limits in `app.config.ts`:
+
+```typescript
+rateLimit: {
+  register: { ip: { max: 5, window: 3600 } }, // 5 per hour
+  verify: { 
+    ip: { max: 10, window: 900 },  // 10 per 15 min
+    email: { max: 5, window: 900 } // 5 per 15 min
+  },
+  resend: { 
+    ip: { max: 3, window: 3600 },  // 3 per hour
+    email: { max: 3, window: 3600 }
+  },
+}
+```
+
 ### Testing Requirements
 
 Unit tests for:
@@ -296,23 +364,25 @@ Integration tests for:
 
 ## Implementation Order
 
-1. Install dependencies (`nodemailer`, `@types/nodemailer`)
-2. Add environment configuration
-3. Create `EmailVerification` entity
-4. Create database migration
-5. Run migration
-6. Implement `OtpService`
-7. Implement `EmailService`
-8. Create `EmailModule`
-9. Implement `EmailVerificationService`
-10. Register services in `AuthModule`
-11. Create DTOs (`VerifyEmailDto`, `ResendVerificationDto`)
-12. Modify `AuthService.registerWithEmail`
-13. Add verification endpoints to `AuthController`
-14. Modify `AuthService.loginWithEmail` to check verification
-15. Add cleanup scheduler
-16. Write unit tests
-17. Write integration tests
+1. Install dependencies (`nodemailer`, `@types/nodemailer`, `@nestjs/schedule`)
+2. Add environment configuration (SMTP + OTP settings)
+3. Add rate limit configuration
+4. Create `EmailVerification` entity
+5. Create database migration
+6. Run migration
+7. Implement `OtpService`
+8. Implement `EmailService`
+9. Create `EmailModule`
+10. Implement `EmailVerificationService`
+11. Implement `RateLimitGuard`
+12. Register services in `AuthModule`
+13. Create DTOs (`VerifyEmailDto`, `ResendVerificationDto`)
+14. Modify `AuthService.registerWithEmail` (no session, send OTP)
+15. Add verification endpoints to `AuthController` (with rate limiting)
+16. Modify `AuthService.loginWithEmail` (check verification, resend OTP if needed)
+17. Add cleanup scheduler
+18. Write unit tests
+19. Write integration tests
 
 ## Breaking Changes
 
@@ -334,16 +404,53 @@ Integration tests for:
 4. Drop `email_verifications` table via migration revert
 5. Remove email services and modules
 
+## Redis Rate Limiting
+
+Implement Redis-based rate limiting for verification endpoints to prevent abuse:
+
+### Rate Limit Rules
+
+| Endpoint | Limit Strategy | Configuration |
+|----------|---------------|---------------|
+| `/auth/email/register` | Per IP | 5 requests per hour |
+| `/auth/email/verify` | Per IP + Per Email | 10 attempts per 15 minutes (IP), 5 attempts per 15 minutes (email) |
+| `/auth/email/resend-verification` | Per IP + Per Email | 3 requests per hour (IP), 3 requests per hour (email) |
+| `/auth/email/login` (unverified) | Per Email | 3 OTP resends per hour |
+
+### Implementation
+
+Use Redis with sliding window algorithm:
+
+```typescript
+// Key structure
+rate_limit:register:{ip}
+rate_limit:verify_ip:{ip}
+rate_limit:verify_email:{email}
+rate_limit:resend_ip:{ip}
+rate_limit:resend_email:{email}
+```
+
+Implementation using existing `ioredis`:
+- Check rate limit before processing request
+- Return 429 with retry-after header if exceeded
+- Store attempt counts with TTL matching the window
+
+This prevents:
+- Brute-force OTP guessing
+- Email bombing via resend
+- Registration spam
+- Verification endpoint abuse
+
 ## Open Questions
 
-1. **Existing users migration**: Should we automatically verify existing active email users?
-   - Recommendation: Yes, via one-time migration script
+~~1. **Existing users migration**: Should we automatically verify existing active email users?~~
+   - **Resolution**: No existing users in system, not required
    
-2. **Rate limiting**: Should we implement Redis-based rate limiting per IP/email?
-   - Recommendation: Yes, but can be added after core feature
+~~2. **Rate limiting**: Should we implement Redis-based rate limiting per IP/email?~~
+   - **Resolution**: Implement now with Redis (see above)
    
-3. **Email provider**: Gmail SMTP vs dedicated service (SendGrid, SES)?
-   - Recommendation: Start with Gmail SMTP (development), migrate to production provider later
+~~3. **Email provider**: Gmail SMTP vs dedicated service (SendGrid, SES)?~~
+   - **Resolution**: Gmail SMTP for development, migrate to production provider later
 
 ## Success Criteria
 
@@ -355,3 +462,5 @@ Integration tests for:
 - ✅ No security vulnerabilities
 - ✅ All tests passing
 - ✅ Documentation updated
+- ✅ Login handles unverified users gracefully (resends OTP)
+- ✅ Redis rate limiting active on verification endpoints
