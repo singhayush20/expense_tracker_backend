@@ -18,6 +18,8 @@ import { UserService } from '../../../user/service/user.service';
 import { PasswordCredential } from '../../../user/entity/password-credential.entity';
 import { AuthIdentity } from '../../../user/entity/auth-identity.entity';
 import { User } from '../../../user/entity/user.entity';
+import { LoginResponseDto } from '../../dto/login.response.dto';
+import { RefreshResponseDto } from '../../dto/refresh.response.dto';
 
 interface DeviceContext {
   deviceId?: string;
@@ -42,7 +44,7 @@ export class AuthService {
     password: string,
     displayName: string,
     device?: DeviceContext,
-  ) {
+  ): Promise<LoginResponseDto> {
     const normalizedEmail = email.toLowerCase().trim();
 
     const existing = await this.usersService.findByEmail(normalizedEmail);
@@ -88,7 +90,7 @@ export class AuthService {
     email: string,
     password: string,
     device?: DeviceContext,
-  ) {
+  ): Promise<LoginResponseDto> {
     const normalizedEmail = email.toLowerCase().trim();
 
     const user = await this.usersService.findByEmail(normalizedEmail);
@@ -119,7 +121,10 @@ export class AuthService {
     return this.createSessionResponse(user.id, device);
   }
 
-  async loginWithGoogle(idToken: string, device?: DeviceContext) {
+  async loginWithGoogle(
+    idToken: string,
+    device?: DeviceContext,
+  ): Promise<LoginResponseDto> {
     const googleUser = await this.googleAuthService.verifyIdToken(idToken);
 
     let user = await this.usersService.findByGoogleSubject(googleUser.subject);
@@ -170,7 +175,10 @@ export class AuthService {
     return this.createSessionResponse(user.id, device);
   }
 
-  private async createSessionResponse(userId: string, device?: DeviceContext) {
+  private async createSessionResponse(
+    userId: string,
+    device?: DeviceContext,
+  ): Promise<LoginResponseDto> {
     const { session, refreshToken } = await this.sessionService.createSession({
       userId,
       ...device,
@@ -195,7 +203,7 @@ export class AuthService {
     };
   }
 
-  async refresh(session: Session) {
+  async refresh(session: Session): Promise<RefreshResponseDto> {
     const user = await this.usersService.findById(session.userId);
 
     if (user.status !== UserStatus.ACTIVE) {
@@ -221,7 +229,7 @@ export class AuthService {
       expiresIn: 900,
       user: {
         id: user.id,
-        email: user.email,
+        email: user.email ?? null,
         roles,
       },
     };
