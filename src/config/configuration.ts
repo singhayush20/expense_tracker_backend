@@ -19,6 +19,7 @@ const configuration = () => {
     tokens: {
       accessTokenExpiresInSeconds: 3600, // 1 hour in seconds
       refreshTokenExpiresInSeconds: 7 * 24 * 60 * 60, // 7 days in seconds
+      refreshTokenBytes: 64,
       jwtSecretKey: process.env.JWT_SECRET_KEY,
     },
     swagger: {

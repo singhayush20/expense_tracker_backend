@@ -2,9 +2,9 @@
 
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { AUTH_CONSTANTS } from '../../constants/auth.constants';
 import { AuthTokenService } from '../auth-token/auth-token.service';
 import { Session } from '../../entity/session.entity';
 
@@ -23,6 +23,7 @@ export class SessionService {
     private readonly sessionsRepository: Repository<Session>,
 
     private readonly authTokenService: AuthTokenService,
+    private readonly configService: ConfigService,
   ) {}
 
   async createSession(params: CreateSessionParams): Promise<{
@@ -36,9 +37,13 @@ export class SessionService {
 
     const expiresAt = new Date();
 
-    expiresAt.setDate(
-      expiresAt.getDate() + AUTH_CONSTANTS.REFRESH_TOKEN_TTL_DAYS,
+    const refreshTokenTtlSeconds = this.configService.get<number>(
+      'tokens.refreshTokenExpiresInSeconds',
     );
+    if (!refreshTokenTtlSeconds) {
+      throw new Error('tokens.refreshTokenExpiresInSeconds is not configured');
+    }
+    expiresAt.setSeconds(expiresAt.getSeconds() + refreshTokenTtlSeconds);
 
     const session = this.sessionsRepository.create({
       userId: params.userId,

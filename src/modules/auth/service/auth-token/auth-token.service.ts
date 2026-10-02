@@ -5,12 +5,13 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes, createHash } from 'crypto';
-import { AUTH_CONSTANTS } from '../../constants/auth.constants';
 import { AccessTokenPayload } from '../../dto/auth.dto';
 
 @Injectable()
 export class AuthTokenService {
   private readonly accessTokenSecret: string;
+  private readonly accessTokenExpiresInSeconds: number;
+  private readonly refreshTokenBytes: number;
 
   constructor(
     private readonly jwtService: JwtService,
@@ -23,6 +24,12 @@ export class AuthTokenService {
     }
 
     this.accessTokenSecret = secret;
+    this.accessTokenExpiresInSeconds = this.configService.get<number>(
+      'tokens.accessTokenExpiresInSeconds',
+    )!;
+    this.refreshTokenBytes = this.configService.get<number>(
+      'tokens.refreshTokenBytes',
+    )!;
   }
 
   async createAccessToken(
@@ -35,7 +42,7 @@ export class AuthTokenService {
       },
       {
         secret: this.accessTokenSecret,
-        expiresIn: AUTH_CONSTANTS.ACCESS_TOKEN_TTL_SECONDS,
+        expiresIn: this.accessTokenExpiresInSeconds,
       },
     );
   }
@@ -60,9 +67,7 @@ export class AuthTokenService {
   }
 
   createRefreshToken(): string {
-    return randomBytes(AUTH_CONSTANTS.REFRESH_TOKEN_BYTES).toString(
-      'base64url',
-    );
+    return randomBytes(this.refreshTokenBytes).toString('base64url');
   }
 
   hashRefreshToken(token: string): string {
