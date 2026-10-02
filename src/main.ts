@@ -8,7 +8,6 @@ import { ValidationError } from 'class-validator';
 import express from 'express';
 import { AppException } from './exceptionn-handling/app-exception';
 import { ExceptionCodes } from './exceptionn-handling/exception-codes';
-import { DataSource } from 'typeorm';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
@@ -20,20 +19,7 @@ async function bootstrap(): Promise<void> {
    */
   app.useLogger(app.get(Logger));
 
-  const logger = app.get(Logger);
-  const dataSource = app.get(DataSource);
   const configService = app.get(ConfigService);
-
-  try {
-    await dataSource.initialize();
-    const host = configService.get<string>('database.host');
-    const port = configService.get<number>('database.port');
-    const database = configService.get<string>('database.name');
-    logger.log(`Database connected: ${host}:${port}/${database}`);
-  } catch (error) {
-    logger.error(`Database connection failed: ${(error as Error).message}`);
-    process.exit(1);
-  }
 
   app.useGlobalPipes(
     new ValidationPipe({
