@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 
-import { SessionService } from '../service/session/session.service';
+import { SessionService } from '../service/session';
 import { RefreshTokenRequest } from '../../../types/authenticated-request.type';
 
 @Injectable()

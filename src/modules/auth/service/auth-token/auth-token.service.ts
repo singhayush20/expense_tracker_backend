@@ -5,7 +5,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes, createHash } from 'crypto';
-import { AccessTokenPayload } from '../../dto/auth.dto';
+import { AccessTokenPayload } from '../../dto';
 
 @Injectable()
 export class AuthTokenService {

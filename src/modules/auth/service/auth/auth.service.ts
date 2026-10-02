@@ -7,26 +7,16 @@ import {
 } from '@nestjs/common';
 
 import { DataSource } from 'typeorm';
-import { AuthIdentityProvider } from '../../enums/auth-identity-provider.enum';
-import { AuthTokenService } from '../auth-token/auth-token.service';
-import { GoogleAuthService } from '../google-auth/google-auth.service';
-import { PasswordService } from '../password/password.service';
-import { SessionService } from '../session/session.service';
-import { UserStatus } from '../../../user/enum/user-status.enum';
-import { Session } from '../../entity/session.entity';
+import { AuthIdentityProvider } from '../../enums';
+import { UserStatus } from '../../../user/enum';
+import { Session } from '../../entity';
+import { PasswordCredential, AuthIdentity, User } from '../../../user/entity';
+import { DeviceContext, LoginResponseDto, RefreshResponseDto } from '../../dto';
 import { UserService } from '../../../user/service/user.service';
-import { PasswordCredential } from '../../../user/entity/password-credential.entity';
-import { AuthIdentity } from '../../../user/entity/auth-identity.entity';
-import { User } from '../../../user/entity/user.entity';
-import { LoginResponseDto } from '../../dto/login.response.dto';
-import { RefreshResponseDto } from '../../dto/refresh.response.dto';
-
-interface DeviceContext {
-  deviceId?: string;
-  deviceName?: string;
-  userAgent?: string;
-  ipAddress?: string;
-}
+import { AuthTokenService } from '../auth-token/auth-token.service';
+import { GoogleAuthService } from '../google-auth';
+import { PasswordService } from '../password';
+import { SessionService } from '../session';
 
 @Injectable()
 export class AuthService {

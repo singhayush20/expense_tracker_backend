@@ -6,13 +6,13 @@ import {
 } from '@nestjs/common';
 
 import { Request } from 'express';
-import { AuthenticatedUser } from '../dto/auth.dto';
-import { AuthTokenService } from '../service/auth-token/auth-token.service';
-import { UserStatus } from '../../user/enum/user-status.enum';
-import { UserService } from '../../user/service/user.service';
 import { Reflector } from '@nestjs/core';
-import { IS_PUBLIC_KEY } from '../decorators/publoc.decorator';
+import { UserStatus } from '../../user/enum';
+import { AuthenticatedUser } from '../dto';
 import { AuthenticatedRequest } from '../../../types/authenticated-request.type';
+import { UserService } from '../../user/service/user.service';
+import { IS_PUBLIC_KEY } from '../decorators/publoc.decorator';
+import { AuthTokenService } from '../service/auth-token/auth-token.service';
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(

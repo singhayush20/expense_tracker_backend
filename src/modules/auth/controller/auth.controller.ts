@@ -1,15 +1,17 @@
 import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
-import { EmailLoginDto } from '../dto/email-login-request.dto';
-import { EmailRegisterDto } from '../dto/email-signup-request.dto';
-import { GoogleSignInDto } from '../dto/google-signin.dto';
+import { Session } from '../entity';
+import {
+  EmailLoginDto,
+  EmailRegisterDto,
+  GoogleSignInDto,
+  LoginResponseDto,
+  RefreshResponseDto,
+  LogoutResponseDto,
+} from '../dto';
+import { AuthSession } from '../decorators/auth-session.decorator';
 import { RefreshTokenGuard } from '../guards/refresh-token.guard';
 import { AuthService } from '../service/auth/auth.service';
-import { AuthSession } from '../decorators/auth-session.decorator';
-import { Session } from '../entity/session.entity';
-import { LoginResponseDto } from '../dto/login.response.dto';
-import { RefreshResponseDto } from '../dto/refresh.response.dto';
-import { LogoutResponseDto } from '../dto/logout.response.dto';
 
 @Controller('auth')
 export class AuthController {

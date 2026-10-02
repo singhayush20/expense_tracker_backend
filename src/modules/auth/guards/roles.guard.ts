@@ -9,8 +9,8 @@ import {
 
 import { Reflector } from '@nestjs/core';
 
-import { ROLES_KEY } from '../decorators/roles.decorator';
-import { Role } from '../../user/enum/role.enum';
+import { ROLES_KEY } from '../decorators';
+import { Role } from '../../user/enum';
 import { AuthenticatedRequest } from '../../../types/authenticated-request.type';
 
 @Injectable()

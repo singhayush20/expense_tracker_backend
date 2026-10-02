@@ -6,13 +6,9 @@ import {
 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { AuthIdentityProvider } from '../../auth/enums/auth-identity-provider.enum';
-import { AuthIdentity } from '../entity/auth-identity.entity';
-import { PasswordCredential } from '../entity/password-credential.entity';
-import { User } from '../entity/user.entity';
-import { UserStatus } from '../enum/user-status.enum';
-import { Role } from '../enum/role.enum';
-import { UserRole } from '../entity/user-role.entity';
+import { AuthIdentityProvider } from '../../auth/enums';
+import { AuthIdentity, PasswordCredential, User, UserRole } from '../entity';
+import { UserStatus, Role } from '../enum';
 
 export interface CreateUserParams {
   email?: string | null;

@@ -1,5 +1,5 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { Session } from '../entity/session.entity';
+import { Session } from '../entity';
 import { SessionRequest } from '../../../types/authenticated-request.type';
 
 export const AuthSession = createParamDecorator(
