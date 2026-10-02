@@ -16,10 +16,10 @@ export class AuthTokenService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {
-    const secret = this.configService.get<string>('JWT_ACCESS_SECRET');
+    const secret = this.configService.get<string>('tokens.jwtSecretKey');
 
     if (!secret) {
-      throw new Error('JWT_ACCESS_SECRET is not configured');
+      throw new Error('jwtSecretKey is not configured');
     }
 
     this.accessTokenSecret = secret;

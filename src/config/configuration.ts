@@ -25,6 +25,9 @@ const configuration = () => {
       username: process.env.SWAGGER_USERNAME,
       password: process.env.SWAGGER_PASSWORD,
     },
+    googleOAuth: {
+      androidClientId: process.env.GOOGLE_OAUTH_ANDROID_CLIENT_ID,
+    },
   };
 };
 

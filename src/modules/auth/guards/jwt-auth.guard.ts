@@ -12,7 +12,7 @@ import { UserStatus } from '../../user/enum/user-status.enum';
 import { UserService } from '../../user/service/user.service';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/publoc.decorator';
-
+import { AuthenticatedRequest } from '../../../types/authenticated-request.type';
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
@@ -22,7 +22,7 @@ export class JwtAuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<Request>();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),

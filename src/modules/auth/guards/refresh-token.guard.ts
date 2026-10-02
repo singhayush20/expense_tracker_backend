@@ -5,15 +5,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 
-import { Request } from 'express';
-import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { SessionService } from '../service/session/session.service';
-
-type RefreshTokenRequest = Request<
-  Record<string, string>,
-  unknown,
-  Partial<RefreshTokenDto>
->;
+import { RefreshTokenRequest } from '../../../types/authenticated-request.type';
 
 @Injectable()
 export class RefreshTokenGuard implements CanActivate {
@@ -32,7 +25,7 @@ export class RefreshTokenGuard implements CanActivate {
       await this.sessionService.findValidSessionByRefreshToken(refreshToken);
 
     request.refreshToken = refreshToken;
-    request.session = session;
+    request.authSession = session;
 
     return true;
   }

@@ -20,15 +20,11 @@ export class GoogleAuthService {
     this.client = new OAuth2Client();
 
     const androidClientId = this.configService.get<string>(
-      'GOOGLE_ANDROID_CLIENT_ID',
+      'googleOAuth.androidClientId',
     );
 
-    const iosClientId = this.configService.get<string>('GOOGLE_IOS_CLIENT_ID');
-
-    const webClientId = this.configService.get<string>('GOOGLE_WEB_CLIENT_ID');
-
-    this.clientIds = [androidClientId, iosClientId, webClientId].filter(
-      (value): value is string => Boolean(value),
+    this.clientIds = [androidClientId].filter((value): value is string =>
+      Boolean(value),
     );
 
     if (this.clientIds.length === 0) {
