@@ -1,5 +1,3 @@
-// auth/services/session.service.ts
-
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { ConfigService } from '@nestjs/config';
@@ -7,14 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Session } from '../../entity';
 import { AuthTokenService } from '../auth-token/auth-token.service';
-
-interface CreateSessionParams {
-  userId: string;
-  deviceId?: string;
-  deviceName?: string;
-  userAgent?: string;
-  ipAddress?: string;
-}
+import { CreateSessionParams } from '../../dto/create-session-params.dto';
 
 @Injectable()
 export class SessionService {

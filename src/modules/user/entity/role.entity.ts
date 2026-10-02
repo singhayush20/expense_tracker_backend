@@ -1,5 +1,3 @@
-// users/role.entity.ts
-
 import {
   Column,
   CreateDateColumn,

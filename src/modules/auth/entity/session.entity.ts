@@ -1,5 +1,3 @@
-// auth/entities/session.entity.ts
-
 import {
   Column,
   CreateDateColumn,
@@ -33,11 +31,6 @@ export class Session {
   })
   user!: User;
 
-  /**
-   * SHA-256/HMAC hash of the opaque refresh token.
-   *
-   * Never store the raw refresh token.
-   */
   @Column({
     name: 'refresh_token_hash',
     type: 'varchar',

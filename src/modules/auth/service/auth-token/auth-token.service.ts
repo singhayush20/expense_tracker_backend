@@ -1,5 +1,3 @@
-// auth/services/auth-token.service.ts
-
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { ConfigService } from '@nestjs/config';

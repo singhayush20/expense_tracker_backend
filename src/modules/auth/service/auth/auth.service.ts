@@ -1,5 +1,3 @@
-// auth/auth.service.ts
-
 import {
   ConflictException,
   Injectable,
@@ -14,9 +12,9 @@ import { PasswordCredential, AuthIdentity, User } from '../../../user/entity';
 import { DeviceContext, LoginResponseDto, RefreshResponseDto } from '../../dto';
 import { UserService } from '../../../user/service/user.service';
 import { AuthTokenService } from '../auth-token/auth-token.service';
-import { GoogleAuthService } from '../google-auth';
 import { PasswordService } from '../password';
-import { SessionService } from '../session';
+import { GoogleAuthService } from '../google-auth/google-auth.service';
+import { SessionService } from '../session/session.service';
 
 @Injectable()
 export class AuthService {
