@@ -2,7 +2,7 @@ import Joi from 'joi';
 
 export const configValidationSchema = Joi.object({
   // App
-  ENVIRONMENT: Joi.string().valid('dev', 'prod', 'test', 'local').required(),
+  ENV: Joi.string().valid('dev', 'prod', 'test', 'local').required(),
   PORT: Joi.number().default(3000),
 
   // Database

@@ -18,7 +18,7 @@ import configuration from './config/configuration';
     LoggingModule,
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: `.env.${process.env.ENVIRONMENT || 'dev'}`,
+      envFilePath: `.env.${process.env.ENV || 'dev'}`,
       load: [configuration],
       validationSchema: configValidationSchema,
     }),
