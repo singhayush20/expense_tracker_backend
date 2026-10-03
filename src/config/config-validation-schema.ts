@@ -63,6 +63,20 @@ export const configValidationSchema = Joi.object({
     .max(86400)
     .default(3600),
 
+  // Rate Limit - Login
+  RATE_LIMIT_LOGIN_IP_MAX: Joi.number().integer().min(1).max(100).default(10),
+  RATE_LIMIT_LOGIN_IP_WINDOW_SECONDS: Joi.number()
+    .integer()
+    .min(60)
+    .max(86400)
+    .default(900),
+  RATE_LIMIT_LOGIN_EMAIL_MAX: Joi.number().integer().min(1).max(100).default(5),
+  RATE_LIMIT_LOGIN_EMAIL_WINDOW_SECONDS: Joi.number()
+    .integer()
+    .min(60)
+    .max(86400)
+    .default(900),
+
   // Rate Limit - Verify
   RATE_LIMIT_VERIFY_IP_MAX: Joi.number().integer().min(1).max(100).default(10),
   RATE_LIMIT_VERIFY_IP_WINDOW_SECONDS: Joi.number()
@@ -94,6 +108,42 @@ export const configValidationSchema = Joi.object({
     .max(100)
     .default(3),
   RATE_LIMIT_RESEND_EMAIL_WINDOW_SECONDS: Joi.number()
+    .integer()
+    .min(60)
+    .max(86400)
+    .default(3600),
+
+  // Rate Limit - Google OAuth
+  RATE_LIMIT_GOOGLE_OAUTH_IP_MAX: Joi.number()
+    .integer()
+    .min(1)
+    .max(100)
+    .default(10),
+  RATE_LIMIT_GOOGLE_OAUTH_IP_WINDOW_SECONDS: Joi.number()
+    .integer()
+    .min(60)
+    .max(86400)
+    .default(900),
+
+  // Rate Limit - Token Refresh
+  RATE_LIMIT_TOKEN_REFRESH_USER_MAX: Joi.number()
+    .integer()
+    .min(1)
+    .max(100)
+    .default(20),
+  RATE_LIMIT_TOKEN_REFRESH_USER_WINDOW_SECONDS: Joi.number()
+    .integer()
+    .min(60)
+    .max(86400)
+    .default(900),
+
+  // Rate Limit - Logout
+  RATE_LIMIT_LOGOUT_USER_MAX: Joi.number()
+    .integer()
+    .min(1)
+    .max(200)
+    .default(50),
+  RATE_LIMIT_LOGOUT_USER_WINDOW_SECONDS: Joi.number()
     .integer()
     .min(60)
     .max(86400)

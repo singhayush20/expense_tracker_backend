@@ -1,91 +1,112 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { CacheService } from '../../../../cache/cache.service';
-import { AppException } from '../../../../exceptionn-handling/app-exception';
+import { RateLimiterService } from '../../../../core/rate-limit/rate-limiter.service';
 import { ExceptionCodes } from '../../../../exceptionn-handling/exception-codes';
-
-interface RateLimitConfig {
-  max: number;
-  windowSeconds: number;
-}
 
 @Injectable()
 export class RateLimitService {
   constructor(
     private readonly configService: ConfigService,
-    private readonly cacheService: CacheService,
+    private readonly rateLimiter: RateLimiterService,
   ) {}
 
-  private getRateLimitKey(type: string, identifier: string): string {
-    return `rate_limit:${type}:${identifier}`;
-  }
-
-  async checkRateLimit(
-    type: string,
-    identifier: string,
-    config: RateLimitConfig,
-  ): Promise<void> {
-    const key = this.getRateLimitKey(type, identifier);
-    const current = await this.cacheService.get<number>(key);
-
-    if (current !== null && current >= config.max) {
-      throw new AppException(
-        ExceptionCodes.TOO_MANY_VERIFICATION_ATTEMPTS,
-        'Too many requests. Please try again later.',
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
-    }
-
-    const newValue = (current ?? 0) + 1;
-    await this.cacheService.set(key, newValue, config.windowSeconds);
-  }
-
   async checkRegistrationLimit(ip: string): Promise<void> {
-    const config: RateLimitConfig = {
-      max: this.configService.get<number>('rateLimit.register.max') ?? 5,
-      windowSeconds:
-        this.configService.get<number>('rateLimit.register.windowSeconds') ??
+    await this.rateLimiter.checkLimit(
+      'register_ip',
+      ip,
+      this.configService.get<number>('rateLimit.register.max') ?? 5,
+      this.configService.get<number>('rateLimit.register.windowSeconds') ??
         3600,
-    };
-
-    await this.checkRateLimit('register_ip', ip, config);
+      ExceptionCodes.RATE_LIMIT_EXCEEDED_REGISTRATION,
+    );
   }
 
   async checkVerificationLimit(ip: string, email: string): Promise<void> {
-    const ipConfig: RateLimitConfig = {
-      max: this.configService.get<number>('rateLimit.verify.ipMax') ?? 10,
-      windowSeconds:
-        this.configService.get<number>('rateLimit.verify.ipWindowSeconds') ??
+    await this.rateLimiter.checkLimit(
+      'verify_ip',
+      ip,
+      this.configService.get<number>('rateLimit.verify.ipMax') ?? 10,
+      this.configService.get<number>('rateLimit.verify.ipWindowSeconds') ?? 900,
+      ExceptionCodes.RATE_LIMIT_EXCEEDED_VERIFICATION,
+    );
+    await this.rateLimiter.checkLimit(
+      'verify_email',
+      email,
+      this.configService.get<number>('rateLimit.verify.emailMax') ?? 5,
+      this.configService.get<number>('rateLimit.verify.emailWindowSeconds') ??
         900,
-    };
-
-    const emailConfig: RateLimitConfig = {
-      max: this.configService.get<number>('rateLimit.verify.emailMax') ?? 5,
-      windowSeconds:
-        this.configService.get<number>('rateLimit.verify.emailWindowSeconds') ??
-        900,
-    };
-
-    await this.checkRateLimit('verify_ip', ip, ipConfig);
-    await this.checkRateLimit('verify_email', email, emailConfig);
+      ExceptionCodes.RATE_LIMIT_EXCEEDED_VERIFICATION,
+    );
   }
 
   async checkResendLimit(ip: string, email: string): Promise<void> {
-    const ipConfig: RateLimitConfig = {
-      max: this.configService.get<number>('rateLimit.resend.ipMax') ?? 3,
-      windowSeconds:
-        this.configService.get<number>('rateLimit.resend.ipWindowSeconds') ??
+    await this.rateLimiter.checkLimit(
+      'resend_ip',
+      ip,
+      this.configService.get<number>('rateLimit.resend.ipMax') ?? 3,
+      this.configService.get<number>('rateLimit.resend.ipWindowSeconds') ??
         3600,
-    };
-
-    const emailConfig: RateLimitConfig = {
-      max: this.configService.get<number>('rateLimit.resend.emailMax') ?? 3,
-      windowSeconds:
-        this.configService.get<number>('rateLimit.resend.emailWindowSeconds') ??
+      ExceptionCodes.RATE_LIMIT_EXCEEDED_RESEND,
+    );
+    await this.rateLimiter.checkLimit(
+      'resend_email',
+      email,
+      this.configService.get<number>('rateLimit.resend.emailMax') ?? 3,
+      this.configService.get<number>('rateLimit.resend.emailWindowSeconds') ??
         3600,
-    };
+      ExceptionCodes.RATE_LIMIT_EXCEEDED_RESEND,
+    );
+  }
 
-    await this.checkRateLimit('resend_ip', ip, ipConfig);
-    await this.checkRateLimit('resend_email', email, emailConfig);
+  async checkLoginLimit(ip: string, email: string): Promise<void> {
+    await this.rateLimiter.checkLimit(
+      'login_ip',
+      ip,
+      this.configService.get<number>('rateLimit.login.ipMax') ?? 10,
+      this.configService.get<number>('rateLimit.login.ipWindowSeconds') ?? 900,
+      ExceptionCodes.RATE_LIMIT_EXCEEDED_LOGIN,
+    );
+    await this.rateLimiter.checkLimit(
+      'login_email',
+      email,
+      this.configService.get<number>('rateLimit.login.emailMax') ?? 5,
+      this.configService.get<number>('rateLimit.login.emailWindowSeconds') ??
+        900,
+      ExceptionCodes.RATE_LIMIT_EXCEEDED_LOGIN,
+    );
+  }
+
+  async checkGoogleOAuthLimit(ip: string): Promise<void> {
+    await this.rateLimiter.checkLimit(
+      'google_oauth_ip',
+      ip,
+      this.configService.get<number>('rateLimit.googleOAuth.ipMax') ?? 10,
+      this.configService.get<number>('rateLimit.googleOAuth.ipWindowSeconds') ??
+        900,
+      ExceptionCodes.RATE_LIMIT_EXCEEDED_GOOGLE_OAUTH,
+    );
+  }
+
+  async checkTokenRefreshLimit(userId: string): Promise<void> {
+    await this.rateLimiter.checkLimit(
+      'token_refresh_user',
+      userId,
+      this.configService.get<number>('rateLimit.tokenRefresh.userMax') ?? 20,
+      this.configService.get<number>(
+        'rateLimit.tokenRefresh.userWindowSeconds',
+      ) ?? 900,
+      ExceptionCodes.RATE_LIMIT_EXCEEDED_TOKEN_REFRESH,
+    );
+  }
+
+  async checkLogoutLimit(userId: string): Promise<void> {
+    await this.rateLimiter.checkLimit(
+      'logout_user',
+      userId,
+      this.configService.get<number>('rateLimit.logout.userMax') ?? 50,
+      this.configService.get<number>('rateLimit.logout.userWindowSeconds') ??
+        3600,
+      ExceptionCodes.RATE_LIMIT_EXCEEDED_LOGOUT,
+    );
   }
 }

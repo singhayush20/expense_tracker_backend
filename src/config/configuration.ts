@@ -62,6 +62,18 @@ const configuration = () => {
           10,
         ),
       },
+      login: {
+        ipMax: parseInt(process.env.RATE_LIMIT_LOGIN_IP_MAX ?? '10', 10),
+        ipWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_LOGIN_IP_WINDOW_SECONDS ?? '900',
+          10,
+        ),
+        emailMax: parseInt(process.env.RATE_LIMIT_LOGIN_EMAIL_MAX ?? '5', 10),
+        emailWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_LOGIN_EMAIL_WINDOW_SECONDS ?? '900',
+          10,
+        ),
+      },
       verify: {
         ipMax: parseInt(process.env.RATE_LIMIT_VERIFY_IP_MAX ?? '10', 10),
         ipWindowSeconds: parseInt(
@@ -83,6 +95,30 @@ const configuration = () => {
         emailMax: parseInt(process.env.RATE_LIMIT_RESEND_EMAIL_MAX ?? '3', 10),
         emailWindowSeconds: parseInt(
           process.env.RATE_LIMIT_RESEND_EMAIL_WINDOW_SECONDS ?? '3600',
+          10,
+        ),
+      },
+      googleOAuth: {
+        ipMax: parseInt(process.env.RATE_LIMIT_GOOGLE_OAUTH_IP_MAX ?? '10', 10),
+        ipWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_GOOGLE_OAUTH_IP_WINDOW_SECONDS ?? '900',
+          10,
+        ),
+      },
+      tokenRefresh: {
+        userMax: parseInt(
+          process.env.RATE_LIMIT_TOKEN_REFRESH_USER_MAX ?? '20',
+          10,
+        ),
+        userWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_TOKEN_REFRESH_USER_WINDOW_SECONDS ?? '900',
+          10,
+        ),
+      },
+      logout: {
+        userMax: parseInt(process.env.RATE_LIMIT_LOGOUT_USER_MAX ?? '50', 10),
+        userWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_LOGOUT_USER_WINDOW_SECONDS ?? '3600',
           10,
         ),
       },

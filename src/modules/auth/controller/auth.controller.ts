@@ -82,12 +82,16 @@ export class AuthController {
     @Body() dto: GoogleSignInDto,
     @Req() request: Request,
   ): Promise<LoginResponseDto> {
-    return this.authService.loginWithGoogle(dto.idToken, {
-      deviceId: dto.deviceId,
-      deviceName: dto.deviceName,
-      ipAddress: request.ip,
-      userAgent: request.headers['user-agent'],
-    });
+    return this.authService.loginWithGoogle(
+      dto.idToken,
+      {
+        deviceId: dto.deviceId,
+        deviceName: dto.deviceName,
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'],
+      },
+      request.ip,
+    );
   }
 
   @Post('refresh')
@@ -99,7 +103,7 @@ export class AuthController {
   @Post('logout')
   @UseGuards(RefreshTokenGuard)
   async logout(@AuthSession() session: Session): Promise<LogoutResponseDto> {
-    await this.authService.logout(session.id);
+    await this.authService.logout(session.id, session.userId);
 
     return {
       success: true,

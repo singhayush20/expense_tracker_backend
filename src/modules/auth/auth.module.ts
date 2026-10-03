@@ -11,6 +11,7 @@ import {
 import { UserModule } from '../user/user.module';
 import { EmailModule } from '../../core/email/email.module';
 import { CacheModule } from '../../cache/cache.module';
+import { RateLimiterModule } from '../../core/rate-limit/rate-limiter.module';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RefreshTokenGuard } from './guards/refresh-token.guard';
 import { RolesGuard } from './guards/roles.guard';
@@ -29,6 +30,7 @@ import { RateLimitService } from './service/rate-limit/rate-limit.service';
     UserModule,
     EmailModule,
     CacheModule,
+    RateLimiterModule,
     TypeOrmModule.forFeature([
       User,
       AuthIdentity,

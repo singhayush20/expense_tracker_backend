@@ -108,9 +108,9 @@ export class AuthService {
     device?: DeviceContext,
     ip?: string,
   ): Promise<LoginResponseDto> {
-    // Check rate limit for login (reusing verification limit)
+    // Check rate limit for login
     if (ip) {
-      await this.rateLimitService.checkVerificationLimit(ip, email);
+      await this.rateLimitService.checkLoginLimit(ip, email);
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -172,7 +172,13 @@ export class AuthService {
   async loginWithGoogle(
     idToken: string,
     device?: DeviceContext,
+    ip?: string,
   ): Promise<LoginResponseDto> {
+    // Check rate limit for Google OAuth
+    if (ip) {
+      await this.rateLimitService.checkGoogleOAuthLimit(ip);
+    }
+
     const googleUser = await this.googleAuthService.verifyIdToken(idToken);
 
     let user = await this.usersService.findByGoogleSubject(googleUser.subject);
@@ -277,6 +283,9 @@ export class AuthService {
   }
 
   async refresh(session: Session): Promise<RefreshResponseDto> {
+    // Check rate limit for token refresh
+    await this.rateLimitService.checkTokenRefreshLimit(session.userId);
+
     const user = await this.usersService.findById(session.userId);
 
     if (user.status !== UserStatus.ACTIVE) {
@@ -312,7 +321,10 @@ export class AuthService {
     };
   }
 
-  async logout(sessionId: string) {
+  async logout(sessionId: string, userId: string): Promise<void> {
+    // Check rate limit for logout
+    await this.rateLimitService.checkLogoutLimit(userId);
+
     await this.sessionService.revokeSession(sessionId);
   }
 }
