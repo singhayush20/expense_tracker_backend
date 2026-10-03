@@ -8,6 +8,9 @@ import {
   LoginResponseDto,
   RefreshResponseDto,
   LogoutResponseDto,
+  VerifyEmailDto,
+  ResendVerificationDto,
+  EmailRegisterResponseDto,
 } from '../dto';
 import { AuthSession } from '../decorators/auth-session.decorator';
 import { RefreshTokenGuard } from '../guards/refresh-token.guard';
@@ -20,17 +23,34 @@ export class AuthController {
   @Post('email/register')
   registerWithEmail(
     @Body() dto: EmailRegisterDto,
-    @Req() request: Request,
-  ): Promise<LoginResponseDto> {
+  ): Promise<EmailRegisterResponseDto> {
     return this.authService.registerWithEmail(
       dto.email,
       dto.password,
       dto.displayName,
-      {
-        ipAddress: request.ip,
-        userAgent: request.headers['user-agent'],
-      },
     );
+  }
+
+  @Post('email/verify')
+  verifyEmail(
+    @Body() dto: VerifyEmailDto,
+    @Req() request: Request,
+  ): Promise<LoginResponseDto> {
+    return this.authService.verifyEmail(dto.email, dto.otp, {
+      ipAddress: request.ip,
+      userAgent: request.headers['user-agent'],
+    });
+  }
+
+  @Post('email/resend-verification')
+  async resendVerificationEmail(
+    @Body() dto: ResendVerificationDto,
+  ): Promise<{ success: true }> {
+    await this.authService.resendVerificationEmail(dto.email);
+
+    return {
+      success: true,
+    };
   }
 
   @Post('email/login')

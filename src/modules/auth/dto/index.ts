@@ -9,3 +9,6 @@ export * from './google-user.dto';
 export * from './refresh-token.dto';
 export * from './auth.dto';
 export * from './device-context.dto';
+export * from './verify-email.dto';
+export * from './resend-verification.dto';
+export * from './email-register-response.dto';

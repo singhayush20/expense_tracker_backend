@@ -1,14 +1,18 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuthIdentityProvider } from '../../auth/enums';
-import { AuthIdentity, PasswordCredential, User, UserRole } from '../entity';
+import {
+  AuthIdentity,
+  PasswordCredential,
+  User,
+  UserRole,
+  RoleEntity,
+} from '../entity';
 import { UserStatus, Role } from '../enum';
+import { AppException } from '../../../exceptionn-handling/app-exception';
+import { ExceptionCodes } from '../../../exceptionn-handling/exception-codes';
 
 export interface CreateUserParams {
   email?: string | null;
@@ -38,7 +42,11 @@ export class UserService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new AppException(
+        ExceptionCodes.USER_NOT_FOUND,
+        'User not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     return user;
@@ -73,43 +81,22 @@ export class UserService {
       const existing = await this.findByEmail(email);
 
       if (existing) {
-        throw new ConflictException('A user with this email already exists');
+        throw new AppException(
+          ExceptionCodes.USER_ALREADY_EXISTS,
+          'A user with this email already exists',
+          HttpStatus.CONFLICT,
+        );
       }
     }
 
     const user = this.usersRepository.create({
       email,
-      displayName: params.displayName ?? null,
-      avatarUrl: params.avatarUrl ?? null,
-      emailVerified: params.emailVerified ?? false,
+      displayName: params.displayName,
+      avatarUrl: params.avatarUrl,
       status: UserStatus.ACTIVE,
     });
 
     return this.usersRepository.save(user);
-  }
-
-  async createPasswordCredential(
-    userId: string,
-    passwordHash: string,
-  ): Promise<PasswordCredential> {
-    const existing = await this.passwordCredentialsRepository.findOne({
-      where: {
-        userId,
-      },
-    });
-
-    if (existing) {
-      throw new ConflictException(
-        'Password authentication is already configured',
-      );
-    }
-
-    const credential = this.passwordCredentialsRepository.create({
-      userId,
-      passwordHash,
-    });
-
-    return this.passwordCredentialsRepository.save(credential);
   }
 
   async getPasswordCredential(
@@ -122,22 +109,8 @@ export class UserService {
     });
   }
 
-  async createIdentity(
-    userId: string,
-    provider: AuthIdentityProvider,
-    providerUserId: string | null,
-  ): Promise<AuthIdentity> {
-    const identity = this.identitiesRepository.create({
-      userId,
-      provider,
-      providerUserId,
-    });
-
-    return this.identitiesRepository.save(identity);
-  }
-
   async getUserRoles(userId: string): Promise<Role[]> {
-    const rows = await this.userRolesRepository.find({
+    const userRoles = await this.userRolesRepository.find({
       where: {
         userId,
       },
@@ -146,6 +119,51 @@ export class UserService {
       },
     });
 
-    return rows.map((row) => row.role.name);
+    return userRoles.map((userRole) => userRole.role.name);
+  }
+
+  async assignRole(userId: string, roleName: Role): Promise<void> {
+    // Check if user already has this role
+    const existingRole = await this.userRolesRepository.findOne({
+      where: {
+        userId,
+        role: {
+          name: roleName,
+        },
+      },
+      relations: {
+        role: true,
+      },
+    });
+
+    if (existingRole) {
+      return;
+    }
+
+    // Find the role entity by name
+    const roleEntity = await this.userRolesRepository.manager.findOne(
+      RoleEntity,
+      {
+        where: {
+          name: roleName,
+        },
+      },
+    );
+
+    if (!roleEntity) {
+      throw new AppException(
+        ExceptionCodes.ROLES_NOT_FOUND,
+        'Role not found',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // Create the user-role association
+    const userRole = this.userRolesRepository.create({
+      userId,
+      roleId: roleEntity.id,
+    });
+
+    await this.userRolesRepository.save(userRole);
   }
 }

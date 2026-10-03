@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
@@ -10,12 +6,20 @@ import { AuthIdentityProvider } from '../../enums';
 import { UserStatus } from '../../../user/enum';
 import { Session } from '../../entity';
 import { PasswordCredential, AuthIdentity, User } from '../../../user/entity';
-import { DeviceContext, LoginResponseDto, RefreshResponseDto } from '../../dto';
+import {
+  DeviceContext,
+  LoginResponseDto,
+  RefreshResponseDto,
+  EmailRegisterResponseDto,
+} from '../../dto';
 import { UserService } from '../../../user/service/user.service';
 import { AuthTokenService } from '../auth-token/auth-token.service';
 import { GoogleAuthService } from '../google-auth/google-auth.service';
 import { SessionService } from '../session/session.service';
 import { PasswordService } from '../password/password.service';
+import { EmailVerificationService } from '../email-verification/email-verification.service';
+import { AppException } from '../../../../exceptionn-handling/app-exception';
+import { ExceptionCodes } from '../../../../exceptionn-handling/exception-codes';
 
 @Injectable()
 export class AuthService {
@@ -27,6 +31,7 @@ export class AuthService {
     private readonly googleAuthService: GoogleAuthService,
     private readonly sessionService: SessionService,
     private readonly authTokenService: AuthTokenService,
+    private readonly emailVerificationService: EmailVerificationService,
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
   ) {
@@ -39,14 +44,17 @@ export class AuthService {
     email: string,
     password: string,
     displayName: string,
-    device?: DeviceContext,
-  ): Promise<LoginResponseDto> {
+  ): Promise<EmailRegisterResponseDto> {
     const normalizedEmail = email.toLowerCase().trim();
 
     const existing = await this.usersService.findByEmail(normalizedEmail);
 
     if (existing) {
-      throw new ConflictException('An account with this email already exists');
+      throw new AppException(
+        ExceptionCodes.USER_ALREADY_EXISTS,
+        'An account with this email already exists',
+        HttpStatus.CONFLICT,
+      );
     }
 
     const passwordHash = await this.passwordService.hash(password);
@@ -79,7 +87,11 @@ export class AuthService {
       return savedUser;
     });
 
-    return this.createSessionResponse(user.id, device);
+    await this.emailVerificationService.sendVerificationEmail(user);
+
+    return {
+      verificationRequired: true,
+    };
   }
 
   async loginWithEmail(
@@ -92,17 +104,39 @@ export class AuthService {
     const user = await this.usersService.findByEmail(normalizedEmail);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new AppException(
+        ExceptionCodes.INVALID_CREDENTIALS,
+        'Invalid email or password',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     if (user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException('User account is not active');
+      throw new AppException(
+        ExceptionCodes.USER_ACCOUNT_NOT_ACTIVE,
+        'User account is not active',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    if (!user.emailVerified) {
+      await this.emailVerificationService.sendVerificationEmail(user);
+
+      throw new AppException(
+        ExceptionCodes.EMAIL_NOT_VERIFIED,
+        'Please verify your email before signing in. A new verification code has been sent to your email.',
+        HttpStatus.FORBIDDEN,
+      );
     }
 
     const credential = await this.usersService.getPasswordCredential(user.id);
 
     if (!credential) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new AppException(
+        ExceptionCodes.INVALID_CREDENTIALS,
+        'Invalid email or password',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     const valid = await this.passwordService.verify(
@@ -111,7 +145,11 @@ export class AuthService {
     );
 
     if (!valid) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new AppException(
+        ExceptionCodes.INVALID_CREDENTIALS,
+        'Invalid email or password',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     return this.createSessionResponse(user.id, device);
@@ -136,8 +174,10 @@ export class AuthService {
          * email/password account, require an explicit
          * authenticated account-linking flow.
          */
-        throw new ConflictException(
+        throw new AppException(
+          ExceptionCodes.USER_ALREADY_EXISTS,
           'An account already exists with this email.',
+          HttpStatus.CONFLICT,
         );
       }
 
@@ -165,10 +205,28 @@ export class AuthService {
     }
 
     if (user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException('User account is not active');
+      throw new AppException(
+        ExceptionCodes.USER_ACCOUNT_NOT_ACTIVE,
+        'User account is not active',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     return this.createSessionResponse(user.id, device);
+  }
+
+  async verifyEmail(
+    email: string,
+    otp: string,
+    device?: DeviceContext,
+  ): Promise<LoginResponseDto> {
+    const user = await this.emailVerificationService.verifyEmail(email, otp);
+
+    return this.createSessionResponse(user.id, device);
+  }
+
+  async resendVerificationEmail(email: string): Promise<void> {
+    await this.emailVerificationService.resendVerificationEmail(email);
   }
 
   private async createSessionResponse(
@@ -205,7 +263,11 @@ export class AuthService {
     if (user.status !== UserStatus.ACTIVE) {
       await this.sessionService.revokeSession(session.id);
 
-      throw new UnauthorizedException('User account is not active');
+      throw new AppException(
+        ExceptionCodes.USER_ACCOUNT_NOT_ACTIVE,
+        'User account is not active',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     const newRefreshToken =

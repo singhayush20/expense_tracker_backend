@@ -1,8 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 
 import { ConfigService } from '@nestjs/config';
 import { OAuth2Client } from 'google-auth-library';
 import { GoogleUser } from '../../dto';
+import { AppException } from '../../../../exceptionn-handling/app-exception';
+import { ExceptionCodes } from '../../../../exceptionn-handling/exception-codes';
 
 @Injectable()
 export class GoogleAuthService {
@@ -35,30 +37,30 @@ export class GoogleAuthService {
       const payload = ticket.getPayload();
 
       if (!payload) {
-        throw new UnauthorizedException('Invalid Google ID token');
-      }
-
-      if (!payload.sub) {
-        throw new UnauthorizedException('Google account has no subject');
-      }
-
-      if (!payload.email) {
-        throw new UnauthorizedException('Google account has no email');
-      }
-
-      if (payload.email_verified !== true) {
-        throw new UnauthorizedException('Google email is not verified');
+        throw new AppException(
+          ExceptionCodes.GOOGLE_VERIFICATION_FAILED,
+          'Invalid Google token',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
 
       return {
         subject: payload.sub,
-        email: payload.email.toLowerCase(),
-        emailVerified: payload.email_verified === true,
+        email: payload.email!,
+        emailVerified: payload.email_verified ?? false,
         displayName: payload.name ?? null,
         avatarUrl: payload.picture ?? null,
       };
-    } catch {
-      throw new UnauthorizedException('Invalid Google authentication');
+    } catch (error) {
+      if (error instanceof AppException) {
+        throw error;
+      }
+
+      throw new AppException(
+        ExceptionCodes.GOOGLE_VERIFICATION_FAILED,
+        'Google authentication failed',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
   }
 }
