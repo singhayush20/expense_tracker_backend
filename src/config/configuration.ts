@@ -2,7 +2,7 @@ const configuration = () => {
   return {
     app: {
       port: parseInt(process.env.PORT ?? '3000', 10),
-      env: process.env.ENVIRONMENT,
+      env: process.env.ENV ?? 'dev',
     },
     database: {
       host: process.env.DB_HOST,
@@ -19,11 +19,109 @@ const configuration = () => {
     tokens: {
       accessTokenExpiresInSeconds: 3600, // 1 hour in seconds
       refreshTokenExpiresInSeconds: 7 * 24 * 60 * 60, // 7 days in seconds
+      refreshTokenBytes: 64,
       jwtSecretKey: process.env.JWT_SECRET_KEY,
     },
     swagger: {
       username: process.env.SWAGGER_USERNAME,
       password: process.env.SWAGGER_PASSWORD,
+    },
+    googleOAuth: {
+      androidClientId: process.env.GOOGLE_OAUTH_ANDROID_CLIENT_ID,
+    },
+    email: {
+      smtp: {
+        host: process.env.EMAIL_SMTP_HOST,
+        port: parseInt(process.env.EMAIL_SMTP_PORT ?? '587', 10),
+        secure: process.env.EMAIL_SMTP_SECURE === 'true',
+        user: process.env.EMAIL_SMTP_USER,
+        password: process.env.EMAIL_SMTP_PASSWORD,
+      },
+      from: process.env.EMAIL_FROM,
+    },
+    emailVerification: {
+      otpLength: parseInt(process.env.EMAIL_VERIFICATION_OTP_LENGTH ?? '6', 10),
+      expiresInMinutes: parseInt(
+        process.env.EMAIL_VERIFICATION_EXPIRES_IN_MINUTES ?? '10',
+        10,
+      ),
+      maxAttempts: parseInt(
+        process.env.EMAIL_VERIFICATION_MAX_ATTEMPTS ?? '5',
+        10,
+      ),
+      resendCooldownSeconds: parseInt(
+        process.env.EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS ?? '60',
+        10,
+      ),
+    },
+    rateLimit: {
+      register: {
+        max: parseInt(process.env.RATE_LIMIT_REGISTER_MAX ?? '5', 10),
+        windowSeconds: parseInt(
+          process.env.RATE_LIMIT_REGISTER_WINDOW_SECONDS ?? '3600',
+          10,
+        ),
+      },
+      login: {
+        ipMax: parseInt(process.env.RATE_LIMIT_LOGIN_IP_MAX ?? '10', 10),
+        ipWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_LOGIN_IP_WINDOW_SECONDS ?? '900',
+          10,
+        ),
+        emailMax: parseInt(process.env.RATE_LIMIT_LOGIN_EMAIL_MAX ?? '5', 10),
+        emailWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_LOGIN_EMAIL_WINDOW_SECONDS ?? '900',
+          10,
+        ),
+      },
+      verify: {
+        ipMax: parseInt(process.env.RATE_LIMIT_VERIFY_IP_MAX ?? '10', 10),
+        ipWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_VERIFY_IP_WINDOW_SECONDS ?? '900',
+          10,
+        ),
+        emailMax: parseInt(process.env.RATE_LIMIT_VERIFY_EMAIL_MAX ?? '5', 10),
+        emailWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_VERIFY_EMAIL_WINDOW_SECONDS ?? '900',
+          10,
+        ),
+      },
+      resend: {
+        ipMax: parseInt(process.env.RATE_LIMIT_RESEND_IP_MAX ?? '3', 10),
+        ipWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_RESEND_IP_WINDOW_SECONDS ?? '3600',
+          10,
+        ),
+        emailMax: parseInt(process.env.RATE_LIMIT_RESEND_EMAIL_MAX ?? '3', 10),
+        emailWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_RESEND_EMAIL_WINDOW_SECONDS ?? '3600',
+          10,
+        ),
+      },
+      googleOAuth: {
+        ipMax: parseInt(process.env.RATE_LIMIT_GOOGLE_OAUTH_IP_MAX ?? '10', 10),
+        ipWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_GOOGLE_OAUTH_IP_WINDOW_SECONDS ?? '900',
+          10,
+        ),
+      },
+      tokenRefresh: {
+        userMax: parseInt(
+          process.env.RATE_LIMIT_TOKEN_REFRESH_USER_MAX ?? '20',
+          10,
+        ),
+        userWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_TOKEN_REFRESH_USER_WINDOW_SECONDS ?? '900',
+          10,
+        ),
+      },
+      logout: {
+        userMax: parseInt(process.env.RATE_LIMIT_LOGOUT_USER_MAX ?? '50', 10),
+        userWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_LOGOUT_USER_WINDOW_SECONDS ?? '3600',
+          10,
+        ),
+      },
     },
   };
 };

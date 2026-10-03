@@ -1,5 +1,5 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+import { PinoLogger } from 'nestjs-pino';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
@@ -9,10 +9,11 @@ export class RedisService implements OnModuleDestroy {
 
   constructor(
     private readonly configService: ConfigService,
-    @InjectPinoLogger(RedisService.name)
     private readonly logger: PinoLogger,
   ) {
-    const redisUrl = this.configService.get<string>('REDIS_URL');
+    this.logger.setContext(RedisService.name);
+
+    const redisUrl = this.configService.get<string>('cache.redis.url');
 
     if (!redisUrl) {
       throw new Error('REDIS_URL is not configured');

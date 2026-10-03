@@ -19,6 +19,8 @@ async function bootstrap(): Promise<void> {
    */
   app.useLogger(app.get(Logger));
 
+  const configService = app.get(ConfigService);
+
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
@@ -66,8 +68,6 @@ async function bootstrap(): Promise<void> {
       },
     }),
   );
-
-  const configService = app.get(ConfigService);
 
   app.enableVersioning({
     type: VersioningType.URI,
