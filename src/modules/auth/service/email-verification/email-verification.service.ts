@@ -2,13 +2,11 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import {
-  EmailVerification,
-  EmailVerificationPurpose,
-} from '../../entity/email-verification.entity';
 import { User } from '../../../user/entity/user.entity';
 import { OtpService } from './otp.service';
+import { OtpData } from '../../dto/otp-data.dto';
 import { EmailService } from '../../../../core/email/email.service';
+import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { AppException } from '../../../../exceptionn-handling/app-exception';
 import { ExceptionCodes } from '../../../../exceptionn-handling/exception-codes';
 
@@ -17,9 +15,6 @@ export class EmailVerificationService {
   private readonly resendCooldownSeconds: number;
 
   constructor(
-    @InjectRepository(EmailVerification)
-    private readonly verificationRepository: Repository<EmailVerification>,
-
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
 
@@ -27,11 +22,13 @@ export class EmailVerificationService {
 
     private readonly emailService: EmailService,
 
+    private readonly rateLimitService: RateLimitService,
+
     private readonly configService: ConfigService,
   ) {
     this.resendCooldownSeconds =
       this.configService.get<number>(
-        'EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS',
+        'emailVerification.resendCooldownSeconds',
       ) ?? 60;
   }
 
@@ -40,19 +37,11 @@ export class EmailVerificationService {
       return;
     }
 
-    const existing = await this.verificationRepository.findOne({
-      where: {
-        userId: user.id,
-        purpose: EmailVerificationPurpose.EMAIL_VERIFICATION,
-      },
-      order: {
-        createdAt: 'DESC',
-      },
-    });
+    // Check resend cooldown
+    const existingData = await this.otpService.getOtpData(user.email!);
 
-    if (existing) {
-      const secondsSinceCreation =
-        (Date.now() - existing.createdAt.getTime()) / 1000;
+    if (existingData) {
+      const secondsSinceCreation = (Date.now() - existingData.createdAt) / 1000;
 
       if (secondsSinceCreation < this.resendCooldownSeconds) {
         throw new AppException(
@@ -65,45 +54,38 @@ export class EmailVerificationService {
       }
     }
 
-    await this.verificationRepository
-      .createQueryBuilder()
-      .delete()
-      .from(EmailVerification)
-      .where('user_id = :userId', {
-        userId: user.id,
-      })
-      .andWhere('purpose = :purpose', {
-        purpose: EmailVerificationPurpose.EMAIL_VERIFICATION,
-      })
-      .execute();
-
+    // Generate and store OTP
     const otp = this.otpService.generateOtp();
 
     const otpHash = await this.otpService.hashOtp(otp);
 
-    const verification = this.verificationRepository.create({
-      userId: user.id,
+    const otpData: OtpData = {
       otpHash,
-      purpose: EmailVerificationPurpose.EMAIL_VERIFICATION,
-      expiresAt: this.otpService.getExpiryDate(),
+      userId: user.id,
       attempts: 0,
-      maxAttempts: this.otpService.getMaxAttempts(),
-      consumedAt: null,
-    });
+      createdAt: Date.now(),
+    };
 
-    await this.verificationRepository.save(verification);
+    await this.otpService.storeOtp(user.email!, otpData);
 
+    // Send email
     try {
       await this.emailService.sendEmailVerificationOtp(user.email!, otp);
     } catch (error) {
-      await this.verificationRepository.delete(verification.id);
+      // Clean up OTP if email fails
+      await this.otpService.deleteOtp(user.email!);
 
       throw error;
     }
   }
 
-  async verifyEmail(email: string, otp: string): Promise<User> {
+  async verifyEmail(email: string, otp: string, ip?: string): Promise<User> {
     const normalizedEmail = email.trim().toLowerCase();
+
+    // Check rate limits
+    if (ip) {
+      await this.rateLimitService.checkVerificationLimit(ip, normalizedEmail);
+    }
 
     const user = await this.userRepository.findOne({
       where: {
@@ -127,17 +109,9 @@ export class EmailVerificationService {
       );
     }
 
-    const verification = await this.verificationRepository.findOne({
-      where: {
-        userId: user.id,
-        purpose: EmailVerificationPurpose.EMAIL_VERIFICATION,
-      },
-      order: {
-        createdAt: 'DESC',
-      },
-    });
+    const otpData = await this.otpService.getOtpData(normalizedEmail);
 
-    if (!verification) {
+    if (!otpData) {
       throw new AppException(
         ExceptionCodes.NO_VERIFICATION_FOUND,
         'No active verification code exists. Please request a new code.',
@@ -145,27 +119,18 @@ export class EmailVerificationService {
       );
     }
 
-    if (verification.consumedAt) {
-      throw new AppException(
-        ExceptionCodes.VERIFICATION_CODE_ALREADY_USED,
-        'Verification code has already been used.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    // Validate attempt count
+    this.otpService.assertAttemptsAvailable(otpData.attempts);
 
-    this.otpService.assertAttemptsAvailable(
-      verification.attempts,
-      verification.maxAttempts,
-    );
+    // Validate expiry
+    this.otpService.assertNotExpired(otpData.createdAt);
 
-    this.otpService.assertNotExpired(verification.expiresAt);
-
-    const valid = await this.otpService.verifyOtp(otp, verification.otpHash);
+    // Verify OTP
+    const valid = await this.otpService.verifyOtp(otp, otpData.otpHash);
 
     if (!valid) {
-      verification.attempts += 1;
-
-      await this.verificationRepository.save(verification);
+      // Increment attempts and throw error
+      await this.otpService.incrementAttempts(normalizedEmail);
 
       throw new AppException(
         ExceptionCodes.INVALID_VERIFICATION_CODE,
@@ -174,38 +139,23 @@ export class EmailVerificationService {
       );
     }
 
-    await this.userRepository.manager.transaction(async (manager) => {
-      const lockedVerification = await manager.findOne(EmailVerification, {
-        where: {
-          id: verification.id,
-        },
-        lock: {
-          mode: 'pessimistic_write',
-        },
-      });
+    // Mark as verified and delete OTP
+    user.emailVerified = true;
 
-      if (!lockedVerification || lockedVerification.consumedAt) {
-        throw new AppException(
-          ExceptionCodes.VERIFICATION_CODE_ALREADY_USED,
-          'Verification code has already been used.',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+    await this.userRepository.save(user);
 
-      lockedVerification.consumedAt = new Date();
-
-      user.emailVerified = true;
-
-      await manager.save(EmailVerification, lockedVerification);
-
-      await manager.save(User, user);
-    });
+    await this.otpService.deleteOtp(normalizedEmail);
 
     return user;
   }
 
-  async resendVerificationEmail(email: string): Promise<void> {
+  async resendVerificationEmail(email: string, ip?: string): Promise<void> {
     const normalizedEmail = email.trim().toLowerCase();
+
+    // Check rate limits
+    if (ip) {
+      await this.rateLimitService.checkResendLimit(ip, normalizedEmail);
+    }
 
     const user = await this.userRepository.findOne({
       where: {
@@ -214,6 +164,7 @@ export class EmailVerificationService {
     });
 
     if (!user || user.emailVerified) {
+      // Don't reveal whether email exists or is already verified
       return;
     }
 

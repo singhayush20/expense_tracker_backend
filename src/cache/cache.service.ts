@@ -1,14 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+import { PinoLogger } from 'nestjs-pino';
 import { RedisService } from './redis/redis.service';
 
 @Injectable()
 export class CacheService {
   constructor(
     private readonly redisService: RedisService,
-    @InjectPinoLogger(CacheService.name)
     private readonly logger: PinoLogger,
-  ) {}
+  ) {
+    this.logger.setContext(CacheService.name);
+  }
 
   private get client() {
     return this.redisService.getClient();
@@ -38,6 +39,7 @@ export class CacheService {
 
     try {
       if (ttlSeconds) {
+        // Add jitter (0-29s) to prevent cache stampede
         const ttl = ttlSeconds + Math.floor(Math.random() * 30);
         await this.client.set(key, serialized, 'EX', ttl);
       } else {
@@ -58,9 +60,9 @@ export class CacheService {
     let result;
 
     if (ttlSeconds) {
-      // add jitter to prevent stampede
+      // Add jitter to prevent stampede
       const ttl = ttlSeconds + Math.floor(Math.random() * 30);
-      // atomic set with NX and EX options to ensure lock is set only if not exists and has an expiration
+      // Atomic set with NX and EX options
       result = await this.client.set(key, serialized, 'EX', ttl, 'NX');
     } else {
       result = await this.client.set(key, serialized, 'NX');
@@ -76,5 +78,24 @@ export class CacheService {
 
   async delete(key: string): Promise<void> {
     await this.client.del(key);
+  }
+
+  async expire(key: string, ttlSeconds: number): Promise<void> {
+    await this.client.expire(key, ttlSeconds);
+    this.logger.debug({ key, ttlSeconds }, 'cache expire');
+  }
+
+  async ttl(key: string): Promise<number> {
+    return this.client.ttl(key);
+  }
+
+  async increment(key: string): Promise<number> {
+    const result = await this.client.incr(key);
+    return result;
+  }
+
+  async decrement(key: string): Promise<number> {
+    const result = await this.client.decr(key);
+    return result;
   }
 }

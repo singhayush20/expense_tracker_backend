@@ -10,17 +10,17 @@ export class EmailService {
   private readonly transporter: Transporter<unknown>;
 
   constructor(private readonly configService: ConfigService) {
-    const host = this.configService.getOrThrow<string>('EMAIL_SMTP_HOST');
+    const host = this.configService.getOrThrow<string>('email.smtp.host');
 
-    const port = this.configService.getOrThrow<number>('EMAIL_SMTP_PORT');
+    const port = this.configService.getOrThrow<number>('email.smtp.port');
 
     const secure =
-      this.configService.get<boolean>('EMAIL_SMTP_SECURE') ?? false;
+      this.configService.get<boolean>('email.smtp.secure') ?? false;
 
-    const user = this.configService.getOrThrow<string>('EMAIL_SMTP_USER');
+    const user = this.configService.getOrThrow<string>('email.smtp.user');
 
     const password = this.configService.getOrThrow<string>(
-      'EMAIL_SMTP_PASSWORD',
+      'email.smtp.password',
     );
 
     this.transporter = nodemailer.createTransport({
@@ -35,7 +35,7 @@ export class EmailService {
   }
 
   async sendEmailVerificationOtp(email: string, otp: string): Promise<void> {
-    const from = this.configService.getOrThrow<string>('EMAIL_FROM');
+    const from = this.configService.getOrThrow<string>('email.from');
 
     try {
       await this.transporter.sendMail({

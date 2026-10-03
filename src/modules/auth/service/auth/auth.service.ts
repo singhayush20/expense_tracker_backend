@@ -18,6 +18,7 @@ import { GoogleAuthService } from '../google-auth/google-auth.service';
 import { SessionService } from '../session/session.service';
 import { PasswordService } from '../password/password.service';
 import { EmailVerificationService } from '../email-verification/email-verification.service';
+import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { AppException } from '../../../../exceptionn-handling/app-exception';
 import { ExceptionCodes } from '../../../../exceptionn-handling/exception-codes';
 
@@ -32,6 +33,7 @@ export class AuthService {
     private readonly sessionService: SessionService,
     private readonly authTokenService: AuthTokenService,
     private readonly emailVerificationService: EmailVerificationService,
+    private readonly rateLimitService: RateLimitService,
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
   ) {
@@ -44,7 +46,13 @@ export class AuthService {
     email: string,
     password: string,
     displayName: string,
+    ip?: string,
   ): Promise<EmailRegisterResponseDto> {
+    // Check rate limit for registration
+    if (ip) {
+      await this.rateLimitService.checkRegistrationLimit(ip);
+    }
+
     const normalizedEmail = email.toLowerCase().trim();
 
     const existing = await this.usersService.findByEmail(normalizedEmail);
@@ -98,7 +106,13 @@ export class AuthService {
     email: string,
     password: string,
     device?: DeviceContext,
+    ip?: string,
   ): Promise<LoginResponseDto> {
+    // Check rate limit for login (reusing verification limit)
+    if (ip) {
+      await this.rateLimitService.checkVerificationLimit(ip, email);
+    }
+
     const normalizedEmail = email.toLowerCase().trim();
 
     const user = await this.usersService.findByEmail(normalizedEmail);
@@ -219,14 +233,19 @@ export class AuthService {
     email: string,
     otp: string,
     device?: DeviceContext,
+    ip?: string,
   ): Promise<LoginResponseDto> {
-    const user = await this.emailVerificationService.verifyEmail(email, otp);
+    const user = await this.emailVerificationService.verifyEmail(
+      email,
+      otp,
+      ip,
+    );
 
     return this.createSessionResponse(user.id, device);
   }
 
-  async resendVerificationEmail(email: string): Promise<void> {
-    await this.emailVerificationService.resendVerificationEmail(email);
+  async resendVerificationEmail(email: string, ip?: string): Promise<void> {
+    await this.emailVerificationService.resendVerificationEmail(email, ip);
   }
 
   private async createSessionResponse(

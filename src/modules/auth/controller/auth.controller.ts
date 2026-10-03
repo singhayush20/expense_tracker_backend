@@ -23,11 +23,13 @@ export class AuthController {
   @Post('email/register')
   registerWithEmail(
     @Body() dto: EmailRegisterDto,
+    @Req() request: Request,
   ): Promise<EmailRegisterResponseDto> {
     return this.authService.registerWithEmail(
       dto.email,
       dto.password,
       dto.displayName,
+      request.ip,
     );
   }
 
@@ -36,17 +38,23 @@ export class AuthController {
     @Body() dto: VerifyEmailDto,
     @Req() request: Request,
   ): Promise<LoginResponseDto> {
-    return this.authService.verifyEmail(dto.email, dto.otp, {
-      ipAddress: request.ip,
-      userAgent: request.headers['user-agent'],
-    });
+    return this.authService.verifyEmail(
+      dto.email,
+      dto.otp,
+      {
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'],
+      },
+      request.ip,
+    );
   }
 
   @Post('email/resend-verification')
   async resendVerificationEmail(
     @Body() dto: ResendVerificationDto,
+    @Req() request: Request,
   ): Promise<{ success: true }> {
-    await this.authService.resendVerificationEmail(dto.email);
+    await this.authService.resendVerificationEmail(dto.email, request.ip);
 
     return {
       success: true,
@@ -58,10 +66,15 @@ export class AuthController {
     @Body() dto: EmailLoginDto,
     @Req() request: Request,
   ): Promise<LoginResponseDto> {
-    return this.authService.loginWithEmail(dto.email, dto.password, {
-      ipAddress: request.ip,
-      userAgent: request.headers['user-agent'],
-    });
+    return this.authService.loginWithEmail(
+      dto.email,
+      dto.password,
+      {
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'],
+      },
+      request.ip,
+    );
   }
 
   @Post('google')

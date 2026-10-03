@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { RedisService } from './cache/redis/redis.service';
 import { LoggingModule } from './logging/logging.module';
+import { CacheModule } from './cache/cache.module';
 import { APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import { GlobalExceptionFilter } from './exceptionn-handling/global-exception.filter';
 import { UserContextInterceptor } from './logging/user-context.interceptor';
@@ -38,13 +38,13 @@ import configuration from './config/configuration';
         retryDelay: 0,
       }),
     }),
+    CacheModule,
     AuthModule,
     UserModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
-    RedisService,
     {
       provide: APP_INTERCEPTOR,
       useClass: UserContextInterceptor,
