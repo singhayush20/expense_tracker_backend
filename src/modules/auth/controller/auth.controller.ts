@@ -4,11 +4,15 @@ import { Session } from '../entity';
 import {
   EmailLoginDto,
   EmailRegisterDto,
+  ForgotPasswordRequestDto,
   GoogleSignInDto,
   LoginResponseDto,
   RefreshResponseDto,
   LogoutResponseDto,
+  ResetPasswordDto,
   VerifyEmailDto,
+  VerifyPasswordResetOtpDto,
+  VerifyPasswordResetResponseDto,
   ResendVerificationDto,
   EmailRegisterResponseDto,
 } from '../dto';
@@ -98,6 +102,47 @@ export class AuthController {
   @UseGuards(RefreshTokenGuard)
   refresh(@AuthSession() session: Session): Promise<RefreshResponseDto> {
     return this.authService.refresh(session);
+  }
+
+  @Post('password/forgot')
+  async requestPasswordReset(
+    @Body() dto: ForgotPasswordRequestDto,
+    @Req() request: Request,
+  ): Promise<{ success: true }> {
+    await this.authService.requestPasswordReset(dto.email, request.ip);
+
+    return {
+      success: true,
+    };
+  }
+
+  @Post('password/verify')
+  verifyPasswordResetOtp(
+    @Body() dto: VerifyPasswordResetOtpDto,
+    @Req() request: Request,
+  ): Promise<VerifyPasswordResetResponseDto> {
+    return this.authService.verifyPasswordResetOtp(
+      dto.email,
+      dto.otp,
+      request.ip,
+    );
+  }
+
+  @Post('password/reset')
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+    @Req() request: Request,
+  ): Promise<{ success: true }> {
+    await this.authService.resetPassword(
+      dto.email,
+      dto.resetToken,
+      dto.newPassword,
+      request.ip,
+    );
+
+    return {
+      success: true,
+    };
   }
 
   @Post('logout')

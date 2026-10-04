@@ -23,6 +23,7 @@ import { PasswordService } from './service/password/password.service';
 import { SessionService } from './service/session/session.service';
 import { OtpService } from './service/email-verification/otp.service';
 import { EmailVerificationService } from './service/email-verification/email-verification.service';
+import { PasswordResetService } from './service/password-reset/password-reset.service';
 import { RateLimitService } from './service/rate-limit/rate-limit.service';
 
 @Module({
@@ -47,6 +48,7 @@ import { RateLimitService } from './service/rate-limit/rate-limit.service';
     GoogleAuthService,
     OtpService,
     EmailVerificationService,
+    PasswordResetService,
     RateLimitService,
     AuthService,
     JwtAuthGuard,

@@ -54,6 +54,12 @@ const configuration = () => {
         10,
       ),
     },
+    passwordReset: {
+      resetTokenExpiresInMinutes: parseInt(
+        process.env.PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES ?? '15',
+        10,
+      ),
+    },
     rateLimit: {
       register: {
         max: parseInt(process.env.RATE_LIMIT_REGISTER_MAX ?? '5', 10),
@@ -119,6 +125,53 @@ const configuration = () => {
         userMax: parseInt(process.env.RATE_LIMIT_LOGOUT_USER_MAX ?? '50', 10),
         userWindowSeconds: parseInt(
           process.env.RATE_LIMIT_LOGOUT_USER_WINDOW_SECONDS ?? '3600',
+          10,
+        ),
+      },
+      passwordReset: {
+        requestIpMax: parseInt(
+          process.env.RATE_LIMIT_PASSWORD_RESET_REQUEST_IP_MAX ?? '5',
+          10,
+        ),
+        requestIpWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_PASSWORD_RESET_REQUEST_IP_WINDOW_SECONDS ??
+            '3600',
+          10,
+        ),
+        requestEmailMax: parseInt(
+          process.env.RATE_LIMIT_PASSWORD_RESET_REQUEST_EMAIL_MAX ?? '3',
+          10,
+        ),
+        requestEmailWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_PASSWORD_RESET_REQUEST_EMAIL_WINDOW_SECONDS ??
+            '3600',
+          10,
+        ),
+        verifyIpMax: parseInt(
+          process.env.RATE_LIMIT_PASSWORD_RESET_VERIFY_IP_MAX ?? '10',
+          10,
+        ),
+        verifyIpWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_PASSWORD_RESET_VERIFY_IP_WINDOW_SECONDS ??
+            '900',
+          10,
+        ),
+        verifyEmailMax: parseInt(
+          process.env.RATE_LIMIT_PASSWORD_RESET_VERIFY_EMAIL_MAX ?? '5',
+          10,
+        ),
+        verifyEmailWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_PASSWORD_RESET_VERIFY_EMAIL_WINDOW_SECONDS ??
+            '900',
+          10,
+        ),
+        resetIpMax: parseInt(
+          process.env.RATE_LIMIT_PASSWORD_RESET_RESET_IP_MAX ?? '10',
+          10,
+        ),
+        resetIpWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_PASSWORD_RESET_RESET_IP_WINDOW_SECONDS ??
+            '900',
           10,
         ),
       },

@@ -12,3 +12,7 @@ export * from './device-context.dto';
 export * from './verify-email.dto';
 export * from './resend-verification.dto';
 export * from './email-register-response.dto';
+export * from './forgot-password-request.dto';
+export * from './verify-password-reset-otp.dto';
+export * from './reset-password.dto';
+export * from './verify-password-reset-response.dto';
