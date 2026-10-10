@@ -8,7 +8,7 @@
 
 | Property | Value |
 |----------|-------|
-| **Name** | Expense Tracker Backend (CodeSense - AI Code Reviewer Platform) |
+| **Name** | Expense Tracker Backend |
 | **Framework** | NestJS v11 (TypeScript) |
 | **Language** | TypeScript (ES2023, NodeNext modules) |
 | **Database** | PostgreSQL via TypeORM |

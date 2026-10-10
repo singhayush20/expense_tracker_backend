@@ -89,6 +89,7 @@ export class OtpService {
     email: string,
     purpose: OtpPurpose = OtpPurpose.EMAIL_VERIFICATION,
   ): Promise<number> {
+    const key = this.getOtpKey(email, purpose);
     const data = await this.getOtpData(email, purpose);
 
     if (!data) {
@@ -101,10 +102,21 @@ export class OtpService {
 
     data.attempts += 1;
 
-    const key = this.getOtpKey(email, purpose);
-    const ttlSeconds = this.expiryMinutes * 60;
+    // Preserve the original expiry instead of extending it: re-saving with a
+    // full TTL would keep the OTP alive indefinitely on repeated guesses.
+    const remainingTtl = await this.cacheService.ttl(key);
 
-    await this.cacheService.set(key, data, ttlSeconds);
+    if (remainingTtl <= 0) {
+      await this.cacheService.delete(key);
+
+      throw new AppException(
+        ExceptionCodes.VERIFICATION_CODE_EXPIRED,
+        'Verification code has expired.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    await this.cacheService.set(key, data, remainingTtl);
 
     return data.attempts;
   }

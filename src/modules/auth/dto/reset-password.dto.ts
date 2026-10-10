@@ -5,6 +5,7 @@ export class ResetPasswordDto {
   email!: string;
 
   @IsString()
+  @MinLength(1)
   @MaxLength(256)
   resetToken!: string;
 

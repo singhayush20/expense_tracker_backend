@@ -68,7 +68,7 @@ you can safely ignore this email.
       );
 
       throw new AppException(
-        ExceptionCodes.EMAIL_NOT_VERIFIED,
+        ExceptionCodes.EMAIL_SEND_FAILED,
         'Unable to send verification email.',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );

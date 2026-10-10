@@ -174,6 +174,15 @@ const configuration = () => {
             '900',
           10,
         ),
+        resetEmailMax: parseInt(
+          process.env.RATE_LIMIT_PASSWORD_RESET_RESET_EMAIL_MAX ?? '5',
+          10,
+        ),
+        resetEmailWindowSeconds: parseInt(
+          process.env.RATE_LIMIT_PASSWORD_RESET_RESET_EMAIL_WINDOW_SECONDS ??
+            '900',
+          10,
+        ),
       },
     },
   };

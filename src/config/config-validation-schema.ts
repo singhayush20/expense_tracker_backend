@@ -207,4 +207,14 @@ export const configValidationSchema = Joi.object({
     .min(60)
     .max(86400)
     .default(900),
+  RATE_LIMIT_PASSWORD_RESET_RESET_EMAIL_MAX: Joi.number()
+    .integer()
+    .min(1)
+    .max(100)
+    .default(5),
+  RATE_LIMIT_PASSWORD_RESET_RESET_EMAIL_WINDOW_SECONDS: Joi.number()
+    .integer()
+    .min(60)
+    .max(86400)
+    .default(900),
 });

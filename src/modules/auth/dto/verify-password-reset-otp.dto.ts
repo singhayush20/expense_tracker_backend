@@ -1,4 +1,4 @@
-import { IsEmail, IsString, Length } from 'class-validator';
+import { IsEmail, IsString, Matches, Length } from 'class-validator';
 
 export class VerifyPasswordResetOtpDto {
   @IsEmail()
@@ -6,5 +6,6 @@ export class VerifyPasswordResetOtpDto {
 
   @IsString()
   @Length(6, 6)
+  @Matches(/^\d+$/, { message: 'otp must contain only digits' })
   otp!: string;
 }

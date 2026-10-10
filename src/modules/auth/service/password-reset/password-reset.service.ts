@@ -6,7 +6,7 @@ import { CacheService } from '../../../../cache/cache.service';
 import { EmailService } from '../../../../core/email/email.service';
 import { AppException } from '../../../../exceptionn-handling/app-exception';
 import { ExceptionCodes } from '../../../../exceptionn-handling/exception-codes';
-import { PasswordCredential, User } from '../../../user/entity';
+import { PasswordCredential } from '../../../user/entity';
 import { UserStatus } from '../../../user/enum';
 import { UserService } from '../../../user/service/user.service';
 import { VerifyPasswordResetResponseDto } from '../../dto';
@@ -29,8 +29,6 @@ export class PasswordResetService {
   private readonly resetTokenExpiresInMinutes: number;
 
   constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
     @InjectRepository(PasswordCredential)
     private readonly passwordCredentialsRepository: Repository<PasswordCredential>,
     private readonly usersService: UserService,
@@ -56,12 +54,10 @@ export class PasswordResetService {
   async requestPasswordReset(email: string, ip?: string): Promise<void> {
     const normalizedEmail = email.toLowerCase().trim();
 
-    if (ip) {
-      await this.rateLimitService.checkPasswordResetRequestLimit(
-        ip,
-        normalizedEmail,
-      );
-    }
+    await this.rateLimitService.checkPasswordResetRequestLimit(
+      ip,
+      normalizedEmail,
+    );
 
     const user = await this.usersService.findByEmail(normalizedEmail);
 
@@ -139,16 +135,12 @@ export class PasswordResetService {
   ): Promise<VerifyPasswordResetResponseDto> {
     const normalizedEmail = email.toLowerCase().trim();
 
-    if (ip) {
-      await this.rateLimitService.checkPasswordResetVerifyLimit(
-        ip,
-        normalizedEmail,
-      );
-    }
+    await this.rateLimitService.checkPasswordResetVerifyLimit(
+      ip,
+      normalizedEmail,
+    );
 
-    const user = await this.userRepository.findOne({
-      where: { email: normalizedEmail },
-    });
+    const user = await this.usersService.findByEmail(normalizedEmail);
 
     if (!user) {
       throw new AppException(
@@ -228,9 +220,10 @@ export class PasswordResetService {
   ): Promise<void> {
     const normalizedEmail = email.toLowerCase().trim();
 
-    if (ip) {
-      await this.rateLimitService.checkPasswordResetConfirmLimit(ip);
-    }
+    await this.rateLimitService.checkPasswordResetResetLimit(
+      ip,
+      normalizedEmail,
+    );
 
     const tokenHash = this.authTokenService.hashRefreshToken(resetToken);
     const tokenData = await this.cacheService.get<PasswordResetTokenData>(
@@ -241,6 +234,19 @@ export class PasswordResetService {
       throw new AppException(
         ExceptionCodes.INVALID_PASSWORD_RESET_TOKEN,
         'Invalid or expired password reset token. Please restart the reset flow.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const tokenExpiresAt =
+      tokenData.createdAt + this.resetTokenExpiresInMinutes * 60 * 1000;
+
+    if (tokenExpiresAt <= Date.now()) {
+      await this.cacheService.delete(this.getResetTokenKey(tokenHash));
+
+      throw new AppException(
+        ExceptionCodes.PASSWORD_RESET_TOKEN_EXPIRED,
+        'Password reset token has expired. Please restart the reset flow.',
         HttpStatus.BAD_REQUEST,
       );
     }

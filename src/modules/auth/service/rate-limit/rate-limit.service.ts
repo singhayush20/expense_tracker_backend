@@ -111,19 +111,22 @@ export class RateLimitService {
   }
 
   async checkPasswordResetRequestLimit(
-    ip: string,
+    ip: string | undefined,
     email: string,
   ): Promise<void> {
-    await this.rateLimiter.checkLimit(
-      'password_reset_request_ip',
-      ip,
-      this.configService.get<number>('rateLimit.passwordReset.requestIpMax') ??
-        5,
-      this.configService.get<number>(
-        'rateLimit.passwordReset.requestIpWindowSeconds',
-      ) ?? 3600,
-      ExceptionCodes.RATE_LIMIT_EXCEEDED_PASSWORD_RESET,
-    );
+    if (ip) {
+      await this.rateLimiter.checkLimit(
+        'password_reset_request_ip',
+        ip,
+        this.configService.get<number>(
+          'rateLimit.passwordReset.requestIpMax',
+        ) ?? 5,
+        this.configService.get<number>(
+          'rateLimit.passwordReset.requestIpWindowSeconds',
+        ) ?? 3600,
+        ExceptionCodes.RATE_LIMIT_EXCEEDED_PASSWORD_RESET,
+      );
+    }
     await this.rateLimiter.checkLimit(
       'password_reset_request_email',
       email,
@@ -138,19 +141,21 @@ export class RateLimitService {
   }
 
   async checkPasswordResetVerifyLimit(
-    ip: string,
+    ip: string | undefined,
     email: string,
   ): Promise<void> {
-    await this.rateLimiter.checkLimit(
-      'password_reset_verify_ip',
-      ip,
-      this.configService.get<number>('rateLimit.passwordReset.verifyIpMax') ??
-        10,
-      this.configService.get<number>(
-        'rateLimit.passwordReset.verifyIpWindowSeconds',
-      ) ?? 900,
-      ExceptionCodes.RATE_LIMIT_EXCEEDED_PASSWORD_RESET,
-    );
+    if (ip) {
+      await this.rateLimiter.checkLimit(
+        'password_reset_verify_ip',
+        ip,
+        this.configService.get<number>('rateLimit.passwordReset.verifyIpMax') ??
+          10,
+        this.configService.get<number>(
+          'rateLimit.passwordReset.verifyIpWindowSeconds',
+        ) ?? 900,
+        ExceptionCodes.RATE_LIMIT_EXCEEDED_PASSWORD_RESET,
+      );
+    }
     await this.rateLimiter.checkLimit(
       'password_reset_verify_email',
       email,
@@ -164,14 +169,29 @@ export class RateLimitService {
     );
   }
 
-  async checkPasswordResetConfirmLimit(ip: string): Promise<void> {
+  async checkPasswordResetResetLimit(
+    ip: string | undefined,
+    email: string,
+  ): Promise<void> {
+    if (ip) {
+      await this.rateLimiter.checkLimit(
+        'password_reset_reset_ip',
+        ip,
+        this.configService.get<number>('rateLimit.passwordReset.resetIpMax') ??
+          10,
+        this.configService.get<number>(
+          'rateLimit.passwordReset.resetIpWindowSeconds',
+        ) ?? 900,
+        ExceptionCodes.RATE_LIMIT_EXCEEDED_PASSWORD_RESET,
+      );
+    }
     await this.rateLimiter.checkLimit(
-      'password_reset_confirm_ip',
-      ip,
-      this.configService.get<number>('rateLimit.passwordReset.resetIpMax') ??
-        10,
+      'password_reset_reset_email',
+      email,
+      this.configService.get<number>('rateLimit.passwordReset.resetEmailMax') ??
+        5,
       this.configService.get<number>(
-        'rateLimit.passwordReset.resetIpWindowSeconds',
+        'rateLimit.passwordReset.resetEmailWindowSeconds',
       ) ?? 900,
       ExceptionCodes.RATE_LIMIT_EXCEEDED_PASSWORD_RESET,
     );
