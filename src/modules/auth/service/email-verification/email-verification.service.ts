@@ -1,10 +1,10 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
 import { User } from '../../../user/entity/user.entity';
 import { OtpService } from './otp.service';
 import { OtpData } from '../../dto/otp-data.dto';
+import { OtpPurpose } from '../../enums/otp-purpose.enum';
 import { EmailService } from '../../../../core/email/email.service';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { AppException } from '../../../../exceptionn-handling/app-exception';
@@ -12,8 +12,6 @@ import { ExceptionCodes } from '../../../../exceptionn-handling/exception-codes'
 
 @Injectable()
 export class EmailVerificationService {
-  private readonly resendCooldownSeconds: number;
-
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -23,36 +21,18 @@ export class EmailVerificationService {
     private readonly emailService: EmailService,
 
     private readonly rateLimitService: RateLimitService,
-
-    private readonly configService: ConfigService,
-  ) {
-    this.resendCooldownSeconds =
-      this.configService.get<number>(
-        'emailVerification.resendCooldownSeconds',
-      ) ?? 60;
-  }
+  ) {}
 
   async sendVerificationEmail(user: User): Promise<void> {
     if (user.emailVerified) {
       return;
     }
 
-    // Check resend cooldown
-    const existingData = await this.otpService.getOtpData(user.email!);
-
-    if (existingData) {
-      const secondsSinceCreation = (Date.now() - existingData.createdAt) / 1000;
-
-      if (secondsSinceCreation < this.resendCooldownSeconds) {
-        throw new AppException(
-          ExceptionCodes.RESEND_COOLDOWN_ACTIVE,
-          `Please wait ${Math.ceil(
-            this.resendCooldownSeconds - secondsSinceCreation,
-          )} seconds before requesting another code.`,
-          HttpStatus.TOO_MANY_REQUESTS,
-        );
-      }
-    }
+    // Check resend cooldown (shared OTP helper, avoids duplication)
+    await this.otpService.assertCooldownAvailable(
+      user.email!,
+      OtpPurpose.EMAIL_VERIFICATION,
+    );
 
     // Generate and store OTP
     const otp = this.otpService.generateOtp();
@@ -66,14 +46,21 @@ export class EmailVerificationService {
       createdAt: Date.now(),
     };
 
-    await this.otpService.storeOtp(user.email!, otpData);
+    await this.otpService.storeOtp(
+      user.email!,
+      otpData,
+      OtpPurpose.EMAIL_VERIFICATION,
+    );
 
     // Send email
     try {
       await this.emailService.sendEmailVerificationOtp(user.email!, otp);
     } catch (error) {
       // Clean up OTP if email fails
-      await this.otpService.deleteOtp(user.email!);
+      await this.otpService.deleteOtp(
+        user.email!,
+        OtpPurpose.EMAIL_VERIFICATION,
+      );
 
       throw error;
     }
@@ -109,7 +96,10 @@ export class EmailVerificationService {
       );
     }
 
-    const otpData = await this.otpService.getOtpData(normalizedEmail);
+    const otpData = await this.otpService.getOtpData(
+      normalizedEmail,
+      OtpPurpose.EMAIL_VERIFICATION,
+    );
 
     if (!otpData) {
       throw new AppException(
@@ -130,7 +120,10 @@ export class EmailVerificationService {
 
     if (!valid) {
       // Increment attempts and throw error
-      await this.otpService.incrementAttempts(normalizedEmail);
+      await this.otpService.incrementAttempts(
+        normalizedEmail,
+        OtpPurpose.EMAIL_VERIFICATION,
+      );
 
       throw new AppException(
         ExceptionCodes.INVALID_VERIFICATION_CODE,
@@ -144,7 +137,10 @@ export class EmailVerificationService {
 
     await this.userRepository.save(user);
 
-    await this.otpService.deleteOtp(normalizedEmail);
+    await this.otpService.deleteOtp(
+      normalizedEmail,
+      OtpPurpose.EMAIL_VERIFICATION,
+    );
 
     return user;
   }

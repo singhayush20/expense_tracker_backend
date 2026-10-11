@@ -11,6 +11,7 @@ import {
   LoginResponseDto,
   RefreshResponseDto,
   EmailRegisterResponseDto,
+  VerifyPasswordResetResponseDto,
 } from '../../dto';
 import { UserService } from '../../../user/service/user.service';
 import { AuthTokenService } from '../auth-token/auth-token.service';
@@ -18,6 +19,7 @@ import { GoogleAuthService } from '../google-auth/google-auth.service';
 import { SessionService } from '../session/session.service';
 import { PasswordService } from '../password/password.service';
 import { EmailVerificationService } from '../email-verification/email-verification.service';
+import { PasswordResetService } from '../password-reset/password-reset.service';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { AppException } from '../../../../exceptionn-handling/app-exception';
 import { ExceptionCodes } from '../../../../exceptionn-handling/exception-codes';
@@ -33,6 +35,7 @@ export class AuthService {
     private readonly sessionService: SessionService,
     private readonly authTokenService: AuthTokenService,
     private readonly emailVerificationService: EmailVerificationService,
+    private readonly passwordResetService: PasswordResetService,
     private readonly rateLimitService: RateLimitService,
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
@@ -252,6 +255,32 @@ export class AuthService {
 
   async resendVerificationEmail(email: string, ip?: string): Promise<void> {
     await this.emailVerificationService.resendVerificationEmail(email, ip);
+  }
+
+  async requestPasswordReset(email: string, ip?: string): Promise<void> {
+    await this.passwordResetService.requestPasswordReset(email, ip);
+  }
+
+  async verifyPasswordResetOtp(
+    email: string,
+    otp: string,
+    ip?: string,
+  ): Promise<VerifyPasswordResetResponseDto> {
+    return this.passwordResetService.verifyPasswordResetOtp(email, otp, ip);
+  }
+
+  async resetPassword(
+    email: string,
+    resetToken: string,
+    newPassword: string,
+    ip?: string,
+  ): Promise<void> {
+    await this.passwordResetService.resetPassword(
+      email,
+      resetToken,
+      newPassword,
+      ip,
+    );
   }
 
   private async createSessionResponse(
