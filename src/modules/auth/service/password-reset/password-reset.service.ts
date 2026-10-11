@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { Repository } from 'typeorm';
 import { CacheService } from '../../../../cache/cache.service';
 import { EmailService } from '../../../../core/email/email.service';
@@ -40,6 +41,8 @@ export class PasswordResetService {
     private readonly authTokenService: AuthTokenService,
     private readonly cacheService: CacheService,
     private readonly configService: ConfigService,
+    @InjectPinoLogger(PasswordResetService.name)
+    private readonly logger: PinoLogger,
   ) {
     this.resetTokenExpiresInMinutes =
       this.configService.get<number>(
@@ -54,6 +57,11 @@ export class PasswordResetService {
   async requestPasswordReset(email: string, ip?: string): Promise<void> {
     const normalizedEmail = email.toLowerCase().trim();
 
+    this.logger.debug(
+      { event: 'passwordReset.request.received', email: normalizedEmail },
+      'Password reset requested',
+    );
+
     await this.rateLimitService.checkPasswordResetRequestLimit(
       ip,
       normalizedEmail,
@@ -62,6 +70,11 @@ export class PasswordResetService {
     const user = await this.usersService.findByEmail(normalizedEmail);
 
     if (!user || !user.email) {
+      this.logger.warn(
+        { event: 'passwordReset.request.userNotFound', email: normalizedEmail },
+        'Password reset requested for unknown email',
+      );
+
       throw new AppException(
         ExceptionCodes.USER_NOT_FOUND,
         'No account found with this email.',
@@ -70,6 +83,15 @@ export class PasswordResetService {
     }
 
     if (user.status !== UserStatus.ACTIVE) {
+      this.logger.warn(
+        {
+          event: 'passwordReset.request.accountNotActive',
+          email: normalizedEmail,
+          userId: user.id,
+        },
+        'Password reset requested for inactive account',
+      );
+
       throw new AppException(
         ExceptionCodes.USER_ACCOUNT_NOT_ACTIVE,
         'User account is not active.',
@@ -78,6 +100,15 @@ export class PasswordResetService {
     }
 
     if (!user.emailVerified) {
+      this.logger.warn(
+        {
+          event: 'passwordReset.request.emailNotVerified',
+          email: normalizedEmail,
+          userId: user.id,
+        },
+        'Password reset requested for unverified email',
+      );
+
       throw new AppException(
         ExceptionCodes.EMAIL_NOT_VERIFIED,
         'Please verify your email before resetting your password.',
@@ -88,6 +119,15 @@ export class PasswordResetService {
     const credential = await this.usersService.getPasswordCredential(user.id);
 
     if (!credential) {
+      this.logger.warn(
+        {
+          event: 'passwordReset.request.notAvailable',
+          email: normalizedEmail,
+          userId: user.id,
+        },
+        'Password reset requested for social-only account',
+      );
+
       throw new AppException(
         ExceptionCodes.PASSWORD_RESET_NOT_AVAILABLE,
         'Password reset is not available for this account. It may use social sign-in.',
@@ -118,7 +158,25 @@ export class PasswordResetService {
 
     try {
       await this.emailService.sendPasswordResetOtp(normalizedEmail, otp);
+
+      this.logger.info(
+        {
+          event: 'passwordReset.otp.issued',
+          email: normalizedEmail,
+          userId: user.id,
+        },
+        'Password reset OTP issued',
+      );
     } catch (error) {
+      this.logger.error(
+        {
+          event: 'passwordReset.otp.sendFailed',
+          email: normalizedEmail,
+          userId: user.id,
+        },
+        'Failed to send password reset OTP',
+      );
+
       await this.otpService.deleteOtp(
         normalizedEmail,
         OtpPurpose.PASSWORD_RESET,
@@ -135,6 +193,11 @@ export class PasswordResetService {
   ): Promise<VerifyPasswordResetResponseDto> {
     const normalizedEmail = email.toLowerCase().trim();
 
+    this.logger.debug(
+      { event: 'passwordReset.verify.received', email: normalizedEmail },
+      'Password reset OTP verification requested',
+    );
+
     await this.rateLimitService.checkPasswordResetVerifyLimit(
       ip,
       normalizedEmail,
@@ -143,6 +206,11 @@ export class PasswordResetService {
     const user = await this.usersService.findByEmail(normalizedEmail);
 
     if (!user) {
+      this.logger.warn(
+        { event: 'passwordReset.verify.userNotFound', email: normalizedEmail },
+        'Password reset OTP verified for unknown email',
+      );
+
       throw new AppException(
         ExceptionCodes.INVALID_VERIFICATION_CODE,
         'Invalid verification code.',
@@ -151,6 +219,15 @@ export class PasswordResetService {
     }
 
     if (user.status !== UserStatus.ACTIVE) {
+      this.logger.warn(
+        {
+          event: 'passwordReset.verify.accountNotActive',
+          email: normalizedEmail,
+          userId: user.id,
+        },
+        'Password reset OTP verified for inactive account',
+      );
+
       throw new AppException(
         ExceptionCodes.USER_ACCOUNT_NOT_ACTIVE,
         'User account is not active.',
@@ -164,6 +241,15 @@ export class PasswordResetService {
     );
 
     if (!otpData) {
+      this.logger.warn(
+        {
+          event: 'passwordReset.verify.noActiveRequest',
+          email: normalizedEmail,
+          userId: user.id,
+        },
+        'Password reset OTP verified with no active request',
+      );
+
       throw new AppException(
         ExceptionCodes.NO_VERIFICATION_FOUND,
         'No active password reset request exists. Please request a new code.',
@@ -180,6 +266,16 @@ export class PasswordResetService {
       await this.otpService.incrementAttempts(
         normalizedEmail,
         OtpPurpose.PASSWORD_RESET,
+      );
+
+      this.logger.warn(
+        {
+          event: 'passwordReset.verify.invalidCode',
+          email: normalizedEmail,
+          userId: user.id,
+          attempts: otpData.attempts + 1,
+        },
+        'Invalid password reset OTP',
       );
 
       throw new AppException(
@@ -206,6 +302,16 @@ export class PasswordResetService {
       this.resetTokenExpiresInMinutes * 60,
     );
 
+    this.logger.info(
+      {
+        event: 'passwordReset.token.issued',
+        email: normalizedEmail,
+        userId: user.id,
+        expiresInMinutes: this.resetTokenExpiresInMinutes,
+      },
+      'Password reset token issued',
+    );
+
     return {
       resetToken,
       expiresInMinutes: this.resetTokenExpiresInMinutes,
@@ -220,6 +326,11 @@ export class PasswordResetService {
   ): Promise<void> {
     const normalizedEmail = email.toLowerCase().trim();
 
+    this.logger.debug(
+      { event: 'passwordReset.reset.received', email: normalizedEmail },
+      'Password reset requested with reset token',
+    );
+
     await this.rateLimitService.checkPasswordResetResetLimit(
       ip,
       normalizedEmail,
@@ -231,6 +342,11 @@ export class PasswordResetService {
     );
 
     if (!tokenData || tokenData.email !== normalizedEmail) {
+      this.logger.warn(
+        { event: 'passwordReset.reset.invalidToken', email: normalizedEmail },
+        'Password reset attempted with invalid token',
+      );
+
       throw new AppException(
         ExceptionCodes.INVALID_PASSWORD_RESET_TOKEN,
         'Invalid or expired password reset token. Please restart the reset flow.',
@@ -244,6 +360,15 @@ export class PasswordResetService {
     if (tokenExpiresAt <= Date.now()) {
       await this.cacheService.delete(this.getResetTokenKey(tokenHash));
 
+      this.logger.warn(
+        {
+          event: 'passwordReset.reset.tokenExpired',
+          email: normalizedEmail,
+          userId: tokenData.userId,
+        },
+        'Password reset attempted with expired token',
+      );
+
       throw new AppException(
         ExceptionCodes.PASSWORD_RESET_TOKEN_EXPIRED,
         'Password reset token has expired. Please restart the reset flow.',
@@ -254,6 +379,11 @@ export class PasswordResetService {
     const user = await this.usersService.findByEmail(normalizedEmail);
 
     if (!user || user.id !== tokenData.userId) {
+      this.logger.warn(
+        { event: 'passwordReset.reset.userMismatch', email: normalizedEmail },
+        'Password reset token does not match account',
+      );
+
       throw new AppException(
         ExceptionCodes.INVALID_PASSWORD_RESET_TOKEN,
         'Invalid or expired password reset token. Please restart the reset flow.',
@@ -262,6 +392,15 @@ export class PasswordResetService {
     }
 
     if (user.status !== UserStatus.ACTIVE) {
+      this.logger.warn(
+        {
+          event: 'passwordReset.reset.accountNotActive',
+          email: normalizedEmail,
+          userId: user.id,
+        },
+        'Password reset attempted for inactive account',
+      );
+
       throw new AppException(
         ExceptionCodes.USER_ACCOUNT_NOT_ACTIVE,
         'User account is not active.',
@@ -272,6 +411,15 @@ export class PasswordResetService {
     const credential = await this.usersService.getPasswordCredential(user.id);
 
     if (!credential) {
+      this.logger.warn(
+        {
+          event: 'passwordReset.reset.notAvailable',
+          email: normalizedEmail,
+          userId: user.id,
+        },
+        'Password reset attempted for social-only account',
+      );
+
       throw new AppException(
         ExceptionCodes.PASSWORD_RESET_NOT_AVAILABLE,
         'Password reset is not available for this account. It may use social sign-in.',
@@ -288,5 +436,14 @@ export class PasswordResetService {
     await this.cacheService.delete(this.getResetTokenKey(tokenHash));
 
     await this.sessionService.revokeAllUserSessions(user.id);
+
+    this.logger.info(
+      {
+        event: 'passwordReset.completed',
+        email: normalizedEmail,
+        userId: user.id,
+      },
+      'Password reset completed, all sessions revoked',
+    );
   }
 }

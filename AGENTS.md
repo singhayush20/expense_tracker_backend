@@ -56,7 +56,7 @@ src/
 │   │   ├── email.service.ts   # Nodemailer wrapper
 │   │   └── email.module.ts
 │   └── rate-limit/
-│       ├── rate-limiter.service.ts  # Sliding-window using Redis sorted sets
+│       ├── rate-limiter.service.ts  # Fixed-window counter (Redis integer + TTL)
 │       └── rate-limiter.module.ts
 ├── types/
 │   └── authenticated-request.type.ts  # Express.Request + user + id
@@ -188,7 +188,17 @@ src/
 
 ### 3.5 Rate Limiting
 
-Sliding window via Redis sorted sets (`core/rate-limit/rate-limiter.service.ts`). Configured per endpoint group in `configuration.ts`:
+Fixed-window counter (`core/rate-limit/rate-limiter.service.ts`): each bucket is a single
+Redis integer at `rate_limit:<prefix>:<identifier>` with `EX = windowSeconds`. `checkLimit`
+GETs the counter, throws 429 when `current >= max`, otherwise increments and re-SETs.
+Note the actual semantics, which differ from a strict window:
+- Blocked requests throw *before* re-SETing, so hammering while blocked does not extend
+  the ban: it lifts `windowSeconds` after the last admitted request, then the budget
+  renews (classic fixed-window boundary behavior — up to ~2×max can land back-to-back
+  across an expiry).
+- Check-then-set is non-atomic — expect ~1 overshoot under concurrency; OTP attempt caps remain as backstops.
+- `CacheService.set` adds 0–29 s TTL jitter to avoid synchronized retry cliffs.
+Configured per endpoint group in `configuration.ts`:
 - `register` (by IP)
 - `login` (by IP + by email)
 - `verify` (by IP + by email)
@@ -196,9 +206,9 @@ Sliding window via Redis sorted sets (`core/rate-limit/rate-limiter.service.ts`)
 - `googleOAuth` (by IP)
 - `tokenRefresh` (by user)
 - `logout` (by user)
-- `passwordReset.request` (by IP + by email)
-- `passwordReset.verify` (by IP + by email)
-- `passwordReset.reset` (by IP)
+- `passwordReset.request` (by IP if present + always by email)
+- `passwordReset.verify` (by IP if present + always by email)
+- `passwordReset.reset` (by IP if present + always by email)
 
 ### 3.6 Email Verification & OTP
 
@@ -342,7 +352,9 @@ Inject `REQUEST` scoped provider or pass minimal context (ip, userAgent) from co
 
 ### 7.3 Redis Key Patterns
 
-- Rate limit: `rate_limit:<prefix>:<identifier>` (string counter, TTL = window)
+- Rate limit: `rate_limit:<prefix>:<identifier>` (integer counter, TTL = window).
+  Password-reset prefixes: `password_reset_request_ip/email`, `password_reset_verify_ip/email`,
+  `password_reset_reset_ip/email`
 - Email-verification OTP: `email_verification:<email>` (JSON `OtpData`, TTL = OTP expiry)
 - Password-reset OTP: `password_reset:<email>` (JSON `OtpData`, TTL = OTP expiry)
 - Password-reset token: `password_reset_token:<sha256>` (JSON `{ userId, email, createdAt }`, TTL = reset-token expiry, single-use)
